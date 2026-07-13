@@ -16,7 +16,7 @@ const wasteExamples = [
   },
   {
     strong: 'Overlapping SaaS tools',
-    rest: '\u2014 paying for Mailchimp plus a CRM that already sends email.',
+    rest: 'like paying for Mailchimp plus a CRM that already sends email.',
   },
   {
     strong: 'Phone, scheduling, and POS platforms',
@@ -30,35 +30,35 @@ const wasteExamples = [
 
 const steps = [
   {
-    num: '01 — Audit',
+    num: '01 · Audit',
     title: 'We find the waste',
     body:
-      'A full review of every subscription, hosting account, license, and tool you pay for. You get a written report with exact monthly savings and prioritized recommendations \u2014 delivered in days, not weeks.',
+      'A full review of every subscription, hosting account, license, and tool you pay for. You get a written report with exact monthly savings and prioritized recommendations, delivered in days, not weeks.',
   },
   {
-    num: '02 — Fix',
+    num: '02 · Fix',
     title: 'We eliminate it',
     body:
-      'We cancel what you don\u2019t need, migrate what\u2019s overpriced, and rebuild what\u2019s broken \u2014 lean, fast websites and consolidated tools that cost a fraction of what you were paying.',
+      'We cancel what you don\u2019t need, migrate what\u2019s overpriced, and rebuild what\u2019s broken: lean, fast websites and consolidated tools that cost a fraction of what you were paying.',
   },
   {
-    num: '03 — Keep it sharp',
+    num: '03 · Keep it sharp',
     title: 'We manage it going forward',
     body:
-      'Hosting, security, updates, SEO, and performance \u2014 handled on a flat monthly retainer so your stack never drifts back into bloat.',
+      'Hosting, security, updates, SEO, and performance, all handled on a flat monthly retainer so your stack never drifts back into bloat.',
   },
 ];
 
 const audits = [
   {
-    tier: 'Audit — Snapshot',
+    tier: 'Audit · Snapshot',
     price: '$299',
     unit: 'one-time',
     desc: 'Full tech stack review, written report, savings estimate, and a 30-minute debrief call. The entry point for every new client.',
     featured: false,
   },
   {
-    tier: 'Audit — Deep Dive',
+    tier: 'Audit · Deep Dive',
     price: '$599',
     unit: 'one-time',
     desc: 'Everything in Snapshot plus competitive benchmarking, a tool consolidation roadmap, and a full migration plan.',
@@ -68,17 +68,17 @@ const audits = [
 
 const builds = [
   {
-    tier: 'Web Build — Starter',
+    tier: 'Web Build · Starter',
     price: '$1,500\u2013$3,500',
     unit: 'project',
     desc: 'A clean, fast site for businesses that need a professional presence without the bloat. No page builders, no plugin roulette.',
     featured: false,
   },
   {
-    tier: 'Web Build — Custom',
+    tier: 'Web Build · Custom',
     price: '$4,000\u2013$10,000+',
     unit: 'project',
-    desc: 'Full custom build \u2014 integrations, booking systems, lead capture, or lightweight client portals. Built to your business, not a template.',
+    desc: 'Full custom build: integrations, booking systems, lead capture, or lightweight client portals. Built to your business, not a template.',
     featured: false,
   },
 ];
@@ -102,7 +102,7 @@ const retainers = [
     tier: 'Partner',
     price: '$1,800+',
     unit: '/month',
-    desc: 'The full managed stack \u2014 dev work, content updates, ad tech oversight, analytics, and priority support.',
+    desc: 'The full managed stack: dev work, content updates, ad tech oversight, analytics, and priority support.',
     featured: false,
   },
 ];
@@ -132,7 +132,7 @@ const verticals = [
       <p class="sub">
         The average small business wastes $150&ndash;$500 every month on
         redundant subscriptions, oversized plans, and bloated websites. A Honed
-        Tech audit shows you exactly where &mdash; usually on the first call.
+        Tech audit shows you exactly where, usually on the first call.
       </p>
       <div class="cta-row">
         <a href="#contact" class="btn btn-primary">Book a Tech Stack Audit</a>
@@ -198,12 +198,11 @@ const verticals = [
       <h2>Simple pricing. No surprises.</h2>
       <p class="section-lead">
         Every engagement starts with an audit. Everything after that is your
-        call &mdash; and the audit usually pays for itself in the first month
-        of savings.
+        call. The audit usually pays for itself in the first month of savings.
       </p>
 
       <div class="pricing-group">
-        <h3>Step 1 — Tech Stack Audits</h3>
+        <h3>Step 1 · Tech Stack Audits</h3>
         <div class="grid grid-2" style="margin-top: 0;">
           {audits.map((p) => (
             <div class:list={['card', 'price-card', { featured: p.featured }]}>
@@ -216,7 +215,7 @@ const verticals = [
       </div>
 
       <div class="pricing-group">
-        <h3>Step 2 — Web Builds</h3>
+        <h3>Step 2 · Web Builds</h3>
         <div class="grid grid-2" style="margin-top: 0;">
           {builds.map((p) => (
             <div class:list={['card', 'price-card', { featured: p.featured }]}>
@@ -229,11 +228,11 @@ const verticals = [
       </div>
 
       <div class="pricing-group">
-        <h3>Step 3 — Monthly Retainers</h3>
+        <h3>Step 3 · Monthly Retainers</h3>
         <div class="grid grid-3" style="margin-top: 0;">
           {retainers.map((p) => (
             <div class:list={['card', 'price-card', { featured: p.featured }]}>
-              <span class="tier">Retainer — {p.tier}</span>
+              <span class="tier">Retainer · {p.tier}</span>
               <span class="price">{p.price}<small>{p.unit}</small></span>
               <p>{p.desc}</p>
             </div>
@@ -250,8 +249,8 @@ const verticals = [
       <h2>Built for owner-operated businesses with real tech spend.</h2>
       <p class="section-lead">
         If you have 1&ndash;25 employees, a digital presence, and nobody on
-        staff whose job is watching your subscriptions &mdash; you&rsquo;re
-        exactly who we help.
+        staff whose job is watching your subscriptions, you&rsquo;re exactly
+        who we help.
       </p>
       <div class="vertical-row">
         {verticals.map((v) => <span class="chip">{v}</span>)}
@@ -274,7 +273,7 @@ const verticals = [
             underneath it.
           </p>
           <p>
-            We do all of it &mdash; because Honed Tech is built by a full-stack
+            We do all of it, because Honed Tech is built by a full-stack
             developer who has shipped SaaS platforms, fintech applications,
             marketplace products, and production infrastructure. You&rsquo;re
             not buying a template. You&rsquo;re buying judgment.
@@ -287,9 +286,9 @@ const verticals = [
         <ul class="cred-list">
           <li><span class="check">✓</span> Audit-first: you see the savings before committing to anything else</li>
           <li><span class="check">✓</span> Full-stack development, not page-builder assembly</li>
-          <li><span class="check">✓</span> Flat, published pricing — no hourly meters</li>
+          <li><span class="check">✓</span> Flat, published pricing with no hourly meters</li>
           <li><span class="check">✓</span> This site runs on the same lean stack we build for clients</li>
-          <li><span class="check">✓</span> Direct, no-jargon communication — advisor, not vendor</li>
+          <li><span class="check">✓</span> Direct, no-jargon communication: advisor, not vendor</li>
         </ul>
       </div>
     </div>
@@ -335,7 +334,7 @@ const verticals = [
             <input id="phone" name="phone" type="tel" autocomplete="tel" />
           </div>
           <div class="field full">
-            <label for="spend">Current monthly tech spend <span class="opt">(optional — a guess is fine)</span></label>
+            <label for="spend">Current monthly tech spend <span class="opt">(optional, a guess is fine)</span></label>
             <select id="spend" name="spend">
               <option value="">Not sure</option>
               <option value="Under $100/mo">Under $100/mo</option>
@@ -345,7 +344,7 @@ const verticals = [
             </select>
           </div>
           <div class="field full">
-            <label for="message">What are you paying for today? <span class="opt">(website, email, software — anything you know of)</span></label>
+            <label for="message">What are you paying for today? <span class="opt">(website, email, software, anything you know of)</span></label>
             <textarea id="message" name="message" required></textarea>
           </div>
           <div class="hp" aria-hidden="true">

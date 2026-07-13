@@ -50,7 +50,7 @@ export const POST: APIRoute = async ({ request, redirect }) => {
     `Name: ${name}`,
     `Business: ${business}`,
     `Email: ${email}`,
-    `Phone: ${phone || '—'}`,
+    `Phone: ${phone || 'Not provided'}`,
     `Monthly tech spend: ${spend || 'Not sure'}`,
     '',
     'Message:',
@@ -63,7 +63,7 @@ export const POST: APIRoute = async ({ request, redirect }) => {
       <tr><td><strong>Name</strong></td><td>${escapeHtml(name)}</td></tr>
       <tr><td><strong>Business</strong></td><td>${escapeHtml(business)}</td></tr>
       <tr><td><strong>Email</strong></td><td>${escapeHtml(email)}</td></tr>
-      <tr><td><strong>Phone</strong></td><td>${escapeHtml(phone) || '—'}</td></tr>
+      <tr><td><strong>Phone</strong></td><td>${escapeHtml(phone) || 'Not provided'}</td></tr>
       <tr><td><strong>Monthly tech spend</strong></td><td>${escapeHtml(spend) || 'Not sure'}</td></tr>
     </table>
     <h3>Message</h3>

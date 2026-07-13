@@ -207,6 +207,8 @@ body {
 /* ---------- Sections ---------- */
 section {
   padding: 64px 0;
+  /* Keep anchor targets clear of the sticky header */
+  scroll-margin-top: 72px;
 }
 
 .section-alt {
@@ -325,7 +327,7 @@ h2 {
 }
 
 .waste-list .x {
-  color: #f87171;
+  color: var(--teal-400);
   font-weight: 700;
   flex-shrink: 0;
   line-height: 1.6;
@@ -356,7 +358,6 @@ h2 {
 
 .step {
   position: relative;
-  padding-left: 0;
 }
 
 .step .num {
@@ -557,7 +558,8 @@ form.contact-form {
   padding: 12px 14px;
   color: var(--ink);
   font-family: var(--font);
-  font-size: 0.95rem;
+  /* 16px minimum prevents iOS Safari from zooming in on focus */
+  font-size: 1rem;
   outline: none;
   transition: border-color 0.15s;
 }
