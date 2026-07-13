@@ -1,0 +1,64 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = 'Honed Tech — Sharp tech. Clean stack. No waste.',
+  description =
+    'Honed Tech finds what your business is overpaying for in its tech stack, fixes it, and keeps it sharp. Tech stack audits, lean web builds, and managed retainers.',
+} = Astro.props;
+
+const logoSvg = `<svg width="26" height="26" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M4 21 L13 3 L17 11" stroke="#2dd4bf" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.5 14.5 L22 21 L4 21" stroke="#e8eef4" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={new URL(Astro.url.pathname, Astro.site)} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={new URL(Astro.url.pathname, Astro.site)} />
+    <link
+      rel="icon"
+      href={`data:image/svg+xml,${encodeURIComponent(logoSvg)}`}
+      type="image/svg+xml"
+    />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <a href="/" class="logo">
+          <Fragment set:html={logoSvg} />
+          <span>Honed<span class="accent">Tech</span></span>
+        </a>
+        <nav class="site-nav">
+          <a href="/#problem">The Problem</a>
+          <a href="/#how-it-works">How It Works</a>
+          <a href="/#pricing">Pricing</a>
+          <a href="/#about">About</a>
+          <a href="/#contact" class="nav-cta">Book an Audit</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <slot />
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <p>&copy; {new Date().getFullYear()} Honed Tech · Phoenix, AZ · Serving clients nationwide</p>
+        <p class="tagline">Sharp tech. Clean stack. No waste.</p>
+      </div>
+    </footer>
+  </body>
+</html>
