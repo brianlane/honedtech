@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "honedtech",
+  "main": "@astrojs/cloudflare/entrypoints/server",
+  "compatibility_date": "2026-07-01",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS"
+  },
+  "send_email": [
+    { "name": "EMAIL" }
+  ],
+  "observability": {
+    "enabled": true
+  },
+  "workers_dev": false,
+  "routes": [
+    { "pattern": "honedtech.com", "custom_domain": true },
+    { "pattern": "www.honedtech.com", "custom_domain": true }
+  ]
+}

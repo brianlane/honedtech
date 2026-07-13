@@ -1,0 +1,364 @@
+---
+import Base from '../layouts/Base.astro';
+
+const wasteExamples = [
+  {
+    strong: 'Shopify subscriptions',
+    rest: 'for businesses that don\u2019t sell a single thing online.',
+  },
+  {
+    strong: 'Google Workspace or Microsoft 365 licenses',
+    rest: 'when free email routing handles the same need.',
+  },
+  {
+    strong: 'Premium managed hosting',
+    rest: 'for a five-page brochure site with modest traffic.',
+  },
+  {
+    strong: 'Overlapping SaaS tools',
+    rest: '\u2014 paying for Mailchimp plus a CRM that already sends email.',
+  },
+  {
+    strong: 'Phone, scheduling, and POS platforms',
+    rest: 'sitting on higher tiers nobody uses.',
+  },
+  {
+    strong: 'Page-builder websites',
+    rest: 'that are slow, insecure, and expensive to keep alive.',
+  },
+];
+
+const steps = [
+  {
+    num: '01 — Audit',
+    title: 'We find the waste',
+    body:
+      'A full review of every subscription, hosting account, license, and tool you pay for. You get a written report with exact monthly savings and prioritized recommendations \u2014 delivered in days, not weeks.',
+  },
+  {
+    num: '02 — Fix',
+    title: 'We eliminate it',
+    body:
+      'We cancel what you don\u2019t need, migrate what\u2019s overpriced, and rebuild what\u2019s broken \u2014 lean, fast websites and consolidated tools that cost a fraction of what you were paying.',
+  },
+  {
+    num: '03 — Keep it sharp',
+    title: 'We manage it going forward',
+    body:
+      'Hosting, security, updates, SEO, and performance \u2014 handled on a flat monthly retainer so your stack never drifts back into bloat.',
+  },
+];
+
+const audits = [
+  {
+    tier: 'Audit — Snapshot',
+    price: '$297',
+    unit: 'one-time',
+    desc: 'Full tech stack review, written report, savings estimate, and a 30-minute debrief call. The entry point for every new client.',
+    featured: false,
+  },
+  {
+    tier: 'Audit — Deep Dive',
+    price: '$597',
+    unit: 'one-time',
+    desc: 'Everything in Snapshot plus competitive benchmarking, a tool consolidation roadmap, and a full migration plan.',
+    featured: true,
+  },
+];
+
+const builds = [
+  {
+    tier: 'Web Build — Starter',
+    price: '$1,500\u2013$3,500',
+    unit: 'project',
+    desc: 'A clean, fast site for businesses that need a professional presence without the bloat. No page builders, no plugin roulette.',
+    featured: false,
+  },
+  {
+    tier: 'Web Build — Custom',
+    price: '$4,000\u2013$10,000+',
+    unit: 'project',
+    desc: 'Full custom build \u2014 integrations, booking systems, lead capture, or lightweight client portals. Built to your business, not a template.',
+    featured: false,
+  },
+];
+
+const retainers = [
+  {
+    tier: 'Essential',
+    price: '$499',
+    unit: '/month',
+    desc: 'Hosting, uptime monitoring, security updates, and a monthly performance report. Your site, handled.',
+    featured: false,
+  },
+  {
+    tier: 'Growth',
+    price: '$999',
+    unit: '/month',
+    desc: 'Everything in Essential plus SEO maintenance, Google Business optimization, and a quarterly strategy call.',
+    featured: true,
+  },
+  {
+    tier: 'Partner',
+    price: '$1,800+',
+    unit: '/month',
+    desc: 'The full managed stack \u2014 dev work, content updates, ad tech oversight, analytics, and priority support.',
+    featured: false,
+  },
+];
+
+const verticals = [
+  'HVAC & Plumbing',
+  'Roofing & Landscaping',
+  'Pest Control',
+  'Law Firms & CPAs',
+  'Financial Advisors',
+  'Real Estate & Property Management',
+  'Chiropractors & Dentists',
+  'Med Spas & Gyms',
+  'Restaurants & Hospitality',
+];
+---
+
+<Base>
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container">
+      <span class="eyebrow">Tech Stack Audits · Web Development · Optimization</span>
+      <h1>
+        Your business is probably overpaying for tech.{' '}
+        <span class="accent">We find it, fix it, and keep it sharp.</span>
+      </h1>
+      <p class="sub">
+        The average small business wastes $150&ndash;$500 every month on
+        redundant subscriptions, oversized plans, and bloated websites. A Honed
+        Tech audit shows you exactly where &mdash; usually on the first call.
+      </p>
+      <div class="cta-row">
+        <a href="#contact" class="btn btn-primary">Book a Tech Stack Audit</a>
+        <a href="#how-it-works" class="btn btn-ghost">See how it works</a>
+      </div>
+      <p class="proof">
+        Flat-rate audits from $297 · Written savings report · No obligation beyond the audit
+      </p>
+    </div>
+  </section>
+
+  <!-- Problem -->
+  <section id="problem" class="section-alt">
+    <div class="container">
+      <p class="kicker">The Problem</p>
+      <h2>Nobody is watching your tech spend. Vendors know it.</h2>
+      <p class="section-lead">
+        Most tools were sold to you by the vendor, set up once, and never
+        revisited. The waste compounds quietly. Here&rsquo;s what we find over
+        and over:
+      </p>
+      <ul class="waste-list">
+        {wasteExamples.map((item) => (
+          <li>
+            <span class="x">✕</span>
+            <span><strong>{item.strong}</strong> {item.rest}</span>
+          </li>
+        ))}
+      </ul>
+      <div class="stat-callout">
+        Most non-ecommerce businesses should be paying little more than their
+        domain registration. Instead, the typical audit uncovers
+        <strong>$200&ndash;$500/month</strong> in recoverable spend.
+      </div>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section id="how-it-works">
+    <div class="container">
+      <p class="kicker">How It Works</p>
+      <h2>Audit. Fix. Keep it sharp.</h2>
+      <p class="section-lead">
+        We start small and low-risk. You see the savings before you ever commit
+        to more.
+      </p>
+      <div class="grid grid-3 steps">
+        {steps.map((step) => (
+          <div class="card step">
+            <p class="num">{step.num}</p>
+            <h3>{step.title}</h3>
+            <p>{step.body}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing -->
+  <section id="pricing" class="section-alt">
+    <div class="container">
+      <p class="kicker">Services &amp; Pricing</p>
+      <h2>Simple pricing. No surprises.</h2>
+      <p class="section-lead">
+        Every engagement starts with an audit. Everything after that is your
+        call &mdash; and the audit usually pays for itself in the first month
+        of savings.
+      </p>
+
+      <div class="pricing-group">
+        <h3>Step 1 — Tech Stack Audits</h3>
+        <div class="grid grid-2" style="margin-top: 0;">
+          {audits.map((p) => (
+            <div class:list={['card', 'price-card', { featured: p.featured }]}>
+              <span class="tier">{p.tier}</span>
+              <span class="price">{p.price} <small>{p.unit}</small></span>
+              <p>{p.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div class="pricing-group">
+        <h3>Step 2 — Web Builds</h3>
+        <div class="grid grid-2" style="margin-top: 0;">
+          {builds.map((p) => (
+            <div class:list={['card', 'price-card', { featured: p.featured }]}>
+              <span class="tier">{p.tier}</span>
+              <span class="price">{p.price} <small>{p.unit}</small></span>
+              <p>{p.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div class="pricing-group">
+        <h3>Step 3 — Monthly Retainers</h3>
+        <div class="grid grid-3" style="margin-top: 0;">
+          {retainers.map((p) => (
+            <div class:list={['card', 'price-card', { featured: p.featured }]}>
+              <span class="tier">Retainer — {p.tier}</span>
+              <span class="price">{p.price}<small>{p.unit}</small></span>
+              <p>{p.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Who it's for -->
+  <section id="who">
+    <div class="container">
+      <p class="kicker">Who It&rsquo;s For</p>
+      <h2>Built for owner-operated businesses with real tech spend.</h2>
+      <p class="section-lead">
+        If you have 1&ndash;25 employees, a digital presence, and nobody on
+        staff whose job is watching your subscriptions &mdash; you&rsquo;re
+        exactly who we help.
+      </p>
+      <div class="vertical-row">
+        {verticals.map((v) => <span class="chip">{v}</span>)}
+      </div>
+    </div>
+  </section>
+
+  <!-- About -->
+  <section id="about" class="section-alt">
+    <div class="container">
+      <p class="kicker">About</p>
+      <h2>Developer-level depth. Business-owner judgment.</h2>
+      <div class="about-grid" style="margin-top: 40px;">
+        <div>
+          <p>
+            Honed Tech sits in a gap most vendors can&rsquo;t fill. Web
+            agencies design but can&rsquo;t audit. IT firms manage
+            infrastructure but never touch your website or SaaS stack.
+            Marketing agencies drive traffic but can&rsquo;t fix the tech
+            underneath it.
+          </p>
+          <p>
+            We do all of it &mdash; because Honed Tech is built by a full-stack
+            developer who has shipped SaaS platforms, fintech applications,
+            marketplace products, and production infrastructure. You&rsquo;re
+            not buying a template. You&rsquo;re buying judgment.
+          </p>
+          <p>
+            Based in the Phoenix / Scottsdale metro area. Audits and builds
+            accepted nationwide.
+          </p>
+        </div>
+        <ul class="cred-list">
+          <li><span class="check">✓</span> Audit-first: you see the savings before committing to anything else</li>
+          <li><span class="check">✓</span> Full-stack development, not page-builder assembly</li>
+          <li><span class="check">✓</span> Flat, published pricing — no hourly meters</li>
+          <li><span class="check">✓</span> This site runs on the same lean stack we build for clients</li>
+          <li><span class="check">✓</span> Direct, no-jargon communication — advisor, not vendor</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact -->
+  <section id="contact">
+    <div class="container">
+      <div class="contact-wrap">
+        <div class="contact-info">
+          <p class="kicker">Book an Audit</p>
+          <h2>Find out what you&rsquo;re overpaying for.</h2>
+          <p>
+            Tell us a little about your business and we&rsquo;ll reach out
+            within one business day to schedule your audit. Most clients see
+            their estimated savings on the very first call.
+          </p>
+          <p class="direct">
+            Prefer email? Reach us directly at
+            <a href="mailto:leads@honedtech.com">leads@honedtech.com</a>
+          </p>
+        </div>
+
+        <form
+          class="contact-form"
+          method="POST"
+          action="/api/contact"
+        >
+          <div class="field">
+            <label for="name">Your name</label>
+            <input id="name" name="name" type="text" required autocomplete="name" />
+          </div>
+          <div class="field">
+            <label for="business">Business name</label>
+            <input id="business" name="business" type="text" required autocomplete="organization" />
+          </div>
+          <div class="field">
+            <label for="email">Email</label>
+            <input id="email" name="email" type="email" required autocomplete="email" />
+          </div>
+          <div class="field">
+            <label for="phone">Phone <span class="opt">(optional)</span></label>
+            <input id="phone" name="phone" type="tel" autocomplete="tel" />
+          </div>
+          <div class="field full">
+            <label for="spend">Current monthly tech spend <span class="opt">(optional — a guess is fine)</span></label>
+            <select id="spend" name="spend">
+              <option value="">Not sure</option>
+              <option value="Under $100/mo">Under $100/mo</option>
+              <option value="$100–$300/mo">$100&ndash;$300/mo</option>
+              <option value="$300–$750/mo">$300&ndash;$750/mo</option>
+              <option value="$750+/mo">$750+/mo</option>
+            </select>
+          </div>
+          <div class="field full">
+            <label for="message">What are you paying for today? <span class="opt">(website, email, software — anything you know of)</span></label>
+            <textarea id="message" name="message" required></textarea>
+          </div>
+          <div class="hp" aria-hidden="true">
+            <label for="website">Leave this field empty</label>
+            <input id="website" name="website" type="text" tabindex="-1" autocomplete="off" />
+          </div>
+          <div class="field full">
+            <button type="submit" class="btn btn-primary" style="width: 100%;">
+              Request My Audit
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+</Base>
