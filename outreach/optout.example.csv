@@ -1,0 +1,3 @@
+# One domain per line. Any prospect whose domain matches is never composed.
+# Copy to optout.csv and add anyone who asks to be removed (CAN-SPAM).
+domain

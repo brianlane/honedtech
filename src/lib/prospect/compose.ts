@@ -1,0 +1,107 @@
+import { totalMonthlyWaste } from './findings';
+import type { Finding } from './types';
+
+export interface Prospect {
+  business: string;
+  domain: string;
+  vertical?: string;
+  city?: string;
+  contactName?: string;
+}
+
+export interface ComposedEmail {
+  subject: string;
+  body: string;
+}
+
+const SENDER_NAME = 'Brian Lane';
+const SENDER_EMAIL = 'leads@honedtech.com';
+const MAILING_ADDRESS = 'Honed Tech, Phoenix, AZ';
+const SITE = 'https://honedtech.com';
+
+// Maps a prospect vertical to its landing page slug. Falls back to the
+// homepage when the vertical has no dedicated page.
+export function verticalPath(vertical: string | undefined): string {
+  if (!vertical) {
+    return '/';
+  }
+  const slug = vertical
+    .toLowerCase()
+    .replace(/&/g, ' ')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return slug ? `/audits/${slug}` : '/';
+}
+
+export function auditUrl(vertical: string | undefined): string {
+  const path = verticalPath(vertical);
+  const params = new URLSearchParams({
+    utm_source: 'outreach',
+    utm_medium: 'email',
+    utm_campaign: 'prospector',
+  });
+  return `${SITE}${path}?${params.toString()}`;
+}
+
+function money(n: number): string {
+  return `$${n.toLocaleString('en-US')}`;
+}
+
+function greeting(prospect: Prospect): string {
+  return prospect.contactName ? `Hi ${prospect.contactName},` : 'Hi there,';
+}
+
+// Renders a plain-text cold email grounded in the findings. Deterministic;
+// an optional AI polish step in the script can rewrite the body, but this is
+// the always-available baseline and the thing we test.
+export function composeEmail(
+  prospect: Prospect,
+  findings: Finding[],
+): ComposedEmail {
+  const top = findings.slice(0, 2);
+  const monthly = totalMonthlyWaste(findings);
+
+  const subject = monthly
+    ? `${prospect.business}: about ${money(monthly)}/mo in likely tech waste`
+    : `${prospect.business}: a couple of quick tech-stack notes`;
+
+  const lines: string[] = [];
+  lines.push(greeting(prospect));
+  lines.push('');
+  lines.push(
+    `I run Honed Tech, a Phoenix tech-stack audit shop, and I took a quick look at ${prospect.domain} before reaching out.`,
+  );
+  lines.push('');
+
+  if (top.length > 0) {
+    lines.push('A couple of things stood out:');
+    for (const f of top) {
+      lines.push(`- ${f.headline}`);
+    }
+    lines.push('');
+  }
+
+  if (monthly > 0) {
+    lines.push(
+      `Rough math, that is around ${money(monthly)}/month you may be able to stop paying for without losing anything you actually use.`,
+    );
+    lines.push('');
+  }
+
+  lines.push(
+    `A full audit is a flat ${money(299)}: I review every subscription, license, and tool, then hand you a written report with the exact savings and a fix plan. If I cannot find at least the audit fee in savings, I will tell you plainly.`,
+  );
+  lines.push('');
+  lines.push(`Worth a 15-minute look? Details here: ${auditUrl(prospect.vertical)}`);
+  lines.push('');
+  lines.push('Best,');
+  lines.push(`${SENDER_NAME}`);
+  lines.push(`${SENDER_EMAIL}`);
+  lines.push('');
+  lines.push('---');
+  lines.push(
+    `${MAILING_ADDRESS}. You received this one-time note because your business has a public website. Reply "unsubscribe" and I will not contact you again.`,
+  );
+
+  return { subject, body: lines.join('\n') };
+}
