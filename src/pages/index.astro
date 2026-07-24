@@ -107,6 +107,34 @@ const retainers = [
   },
 ];
 
+// Turnstile renders only when the public sitekey is configured at build time
+// (locally via .env, in CI via the PUBLIC_TURNSTILE_SITE_KEY repo variable).
+// The matching TURNSTILE_SECRET_KEY Worker secret turns on server-side
+// verification in /api/contact.
+const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY as
+  | string
+  | undefined;
+
+const schema = {
+  '@context': 'https://schema.org',
+  '@type': 'ProfessionalService',
+  name: 'Honed Tech',
+  url: 'https://honedtech.com',
+  image: 'https://honedtech.com/og.png',
+  description:
+    'Honed Tech finds what your business is overpaying for in its tech stack, fixes it, and keeps it sharp. Tech stack audits, lean web builds, and managed retainers.',
+  slogan: 'Sharp tech. Clean stack. No waste.',
+  email: 'leads@honedtech.com',
+  address: {
+    '@type': 'PostalAddress',
+    addressLocality: 'Phoenix',
+    addressRegion: 'AZ',
+    addressCountry: 'US',
+  },
+  areaServed: 'United States',
+  priceRange: '$299-$10,000+',
+};
+
 const verticals = [
   'HVAC & Plumbing',
   'Roofing & Landscaping',
@@ -121,6 +149,13 @@ const verticals = [
 ---
 
 <Base>
+  <script
+    is:inline
+    slot="head"
+    type="application/ld+json"
+    set:html={JSON.stringify(schema)}
+  />
+
   <!-- Hero -->
   <section class="hero">
     <div class="container">
@@ -351,6 +386,16 @@ const verticals = [
             <label for="website">Leave this field empty</label>
             <input id="website" name="website" type="text" tabindex="-1" autocomplete="off" />
           </div>
+          {turnstileSiteKey && (
+            <div class="field full">
+              <div
+                class="cf-turnstile"
+                data-sitekey={turnstileSiteKey}
+                data-action="turnstile-spin-v1"
+                data-theme="dark"
+              ></div>
+            </div>
+          )}
           <div class="field full">
             <button type="submit" class="btn btn-primary" style="width: 100%;">
               Request My Audit
@@ -360,4 +405,13 @@ const verticals = [
       </div>
     </div>
   </section>
+
+  {turnstileSiteKey && (
+    <script
+      is:inline
+      async
+      defer
+      src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+    ></script>
+  )}
 </Base>

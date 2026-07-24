@@ -8,6 +8,35 @@ export const prerender = false;
 const LEAD_TO = 'brianlane2@gmail.com';
 const LEAD_FROM = { email: 'leads@honedtech.com', name: 'Honed Tech Website' };
 
+const TURNSTILE_VERIFY_URL =
+  'https://challenges.cloudflare.com/turnstile/v0/siteverify';
+
+// Verifies the Turnstile token server-side. Enforcement is keyed off the
+// TURNSTILE_SECRET_KEY Worker secret: when it is not set (widget not
+// configured yet), verification is skipped so the form keeps working.
+async function verifyTurnstile(
+  secret: string,
+  token: string,
+  remoteIp: string | null,
+): Promise<boolean> {
+  const body = new URLSearchParams({ secret, response: token });
+  if (remoteIp) {
+    body.set('remoteip', remoteIp);
+  }
+
+  try {
+    const res = await fetch(TURNSTILE_VERIFY_URL, { method: 'POST', body });
+    if (!res.ok) {
+      return false;
+    }
+    const outcome = (await res.json()) as { success?: boolean };
+    return outcome.success === true;
+  } catch (error) {
+    console.error('Turnstile verification failed:', error);
+    return false;
+  }
+}
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
@@ -44,6 +73,23 @@ export const POST: APIRoute = async ({ request, redirect }) => {
   }
   if (name.length > 200 || business.length > 200 || message.length > 5000) {
     return new Response('Submission too long', { status: 400 });
+  }
+
+  const turnstileSecret = (env as { TURNSTILE_SECRET_KEY?: string })
+    .TURNSTILE_SECRET_KEY;
+  if (turnstileSecret) {
+    const token = ((form.get('cf-turnstile-response') as string) ?? '').trim();
+    const verified = await verifyTurnstile(
+      turnstileSecret,
+      token,
+      request.headers.get('CF-Connecting-IP'),
+    );
+    if (!verified) {
+      return new Response(
+        'Verification failed. Please refresh the page and try again.',
+        { status: 403 },
+      );
+    }
   }
 
   const lines = [

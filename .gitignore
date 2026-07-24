@@ -6,3 +6,4 @@ worker-configuration.d.ts
 .dev.vars
 .env
 .DS_Store
+coverage/
