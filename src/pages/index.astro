@@ -1,5 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
+import { verticals } from '../data/verticals';
 
 const wasteExamples = [
   {
@@ -160,17 +161,44 @@ const schema = {
   priceRange: '$299-$10,000+',
 };
 
-const verticals = [
-  'HVAC & Plumbing',
-  'Roofing & Landscaping',
-  'Pest Control',
-  'Law Firms & CPAs',
-  'Financial Advisors',
-  'Real Estate & Property Management',
-  'Chiropractors & Dentists',
-  'Med Spas & Gyms',
-  'Restaurants & Hospitality',
-];
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: 'How much does a tech stack audit cost?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'The Snapshot audit is a flat $299 and the Deep Dive is $599. Enterprise audits start at $2,499. Most audits pay for themselves in the first month of savings.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'What do I get from an audit?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'A written report of every subscription, license, hosting account, and tool you pay for, with the exact monthly savings, prioritized recommendations, and a short debrief call. Delivered in days, not weeks.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Is there any obligation after the audit?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'No. The audit stands on its own. You decide what, if anything, to fix afterward.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Do you only work with businesses in Arizona?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'No. Honed Tech is based in the Phoenix and Scottsdale metro area but accepts audits and builds nationwide.',
+      },
+    },
+  ],
+};
 ---
 
 <Base>
@@ -179,6 +207,12 @@ const verticals = [
     slot="head"
     type="application/ld+json"
     set:html={JSON.stringify(schema)}
+  />
+  <script
+    is:inline
+    slot="head"
+    type="application/ld+json"
+    set:html={JSON.stringify(faqSchema)}
   />
 
   <!-- Hero -->
@@ -361,7 +395,9 @@ const verticals = [
         our <a href="#enterprise">Enterprise offering</a>.
       </p>
       <div class="vertical-row">
-        {verticals.map((v) => <span class="chip">{v}</span>)}
+        {verticals.map((v) => (
+          <a class="chip" href={`/audits/${v.slug}`}>{v.name}</a>
+        ))}
       </div>
     </div>
   </section>
@@ -398,6 +434,22 @@ const verticals = [
           <li><span class="check">✓</span> This site runs on the same lean stack we build for clients</li>
           <li><span class="check">✓</span> Direct, no-jargon communication: advisor, not vendor</li>
         </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section id="faq">
+    <div class="container">
+      <p class="kicker">FAQ</p>
+      <h2>Straight answers before you book.</h2>
+      <div class="faq-list">
+        {faqSchema.mainEntity.map((item) => (
+          <details class="faq-item">
+            <summary>{item.name}</summary>
+            <p>{item.acceptedAnswer.text}</p>
+          </details>
+        ))}
       </div>
     </div>
   </section>
@@ -546,6 +598,19 @@ const verticals = [
             setMode(a.dataset.audit === 'enterprise' ? 'enterprise' : 'default');
           });
         });
+
+      // Prefill the interest field and a message stub when a visitor arrives
+      // from a vertical landing page (/?v=slug#contact). The slug is a
+      // human-readable label after replacing hyphens with spaces.
+      const v = new URLSearchParams(location.search).get('v');
+      if (v) {
+        const label = v.replace(/-/g, ' ');
+        el('interest').value = `Vertical: ${label}`;
+        const message = el('message');
+        if (message instanceof HTMLTextAreaElement && !message.value) {
+          message.value = `I run a ${label} business. `;
+        }
+      }
     })();
   </script>
 </Base>
