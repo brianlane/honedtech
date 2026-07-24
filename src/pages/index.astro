@@ -26,6 +26,10 @@ const wasteExamples = [
     strong: 'Page-builder websites',
     rest: 'that are slow, insecure, and expensive to keep alive.',
   },
+  {
+    strong: 'Proprietary AI software',
+    rest: 'that staff avoid because nobody trained them, while the license bills every seat.',
+  },
 ];
 
 const steps = [
@@ -64,6 +68,13 @@ const audits = [
     desc: 'Everything in Snapshot plus competitive benchmarking, a tool consolidation roadmap, and a full migration plan.',
     featured: true,
   },
+  {
+    tier: 'Audit · Enterprise',
+    price: '$2,499+',
+    unit: 'one-time',
+    desc: 'Multi-team stack and internal-tool review: license and seat utilization, AI software adoption assessment, and an executive report. On-site available.',
+    featured: false,
+  },
 ];
 
 const builds = [
@@ -76,9 +87,16 @@ const builds = [
   },
   {
     tier: 'Web Build · Custom',
-    price: '$4,000\u2013$10,000+',
+    price: '$4,000\u2013$10,000',
     unit: 'project',
     desc: 'Full custom build: integrations, booking systems, lead capture, or lightweight client portals. Built to your business, not a template.',
+    featured: false,
+  },
+  {
+    tier: 'Web Build · Enterprise',
+    price: '$10,000+',
+    unit: 'project',
+    desc: 'Internal tools, dashboards, and deep integrations, including replacements for the proprietary software your team works around instead of with.',
     featured: false,
   },
 ];
@@ -100,9 +118,16 @@ const retainers = [
   },
   {
     tier: 'Partner',
-    price: '$1,800+',
+    price: '$1,800',
     unit: '/month',
-    desc: 'The full managed stack: dev work, content updates, ad tech oversight, analytics, and priority support.',
+    desc: 'The managed stack: dev work, content updates, ad tech oversight, analytics, and priority support.',
+    featured: false,
+  },
+  {
+    tier: 'Enterprise',
+    price: '$4,800+',
+    unit: '/month',
+    desc: 'Embedded consulting: tool adoption and training, vendor management, dedicated dev capacity, and a priority SLA.',
     featured: false,
   },
 ];
@@ -238,7 +263,7 @@ const verticals = [
 
       <div class="pricing-group">
         <h3>Step 1 · Tech Stack Audits</h3>
-        <div class="grid grid-2" style="margin-top: 0;">
+        <div class="grid grid-3" style="margin-top: 0;">
           {audits.map((p) => (
             <div class:list={['card', 'price-card', { featured: p.featured }]}>
               <span class="tier">{p.tier}</span>
@@ -251,7 +276,7 @@ const verticals = [
 
       <div class="pricing-group">
         <h3>Step 2 · Web Builds</h3>
-        <div class="grid grid-2" style="margin-top: 0;">
+        <div class="grid grid-3" style="margin-top: 0;">
           {builds.map((p) => (
             <div class:list={['card', 'price-card', { featured: p.featured }]}>
               <span class="tier">{p.tier}</span>
@@ -264,7 +289,7 @@ const verticals = [
 
       <div class="pricing-group">
         <h3>Step 3 · Monthly Retainers</h3>
-        <div class="grid grid-3" style="margin-top: 0;">
+        <div class="grid grid-4" style="margin-top: 0;">
           {retainers.map((p) => (
             <div class:list={['card', 'price-card', { featured: p.featured }]}>
               <span class="tier">Retainer · {p.tier}</span>
@@ -277,15 +302,61 @@ const verticals = [
     </div>
   </section>
 
+  <!-- Enterprise / tool adoption -->
+  <section id="enterprise">
+    <div class="container">
+      <p class="kicker">Enterprise</p>
+      <h2>Rolled out new software nobody uses? That&rsquo;s waste too.</h2>
+      <p class="section-lead">
+        Companies are buying proprietary and AI-branded software faster than
+        their teams can absorb it. No training, no feedback loop, and staff
+        quietly fall back to spreadsheets while the licenses bill every seat,
+        every month. Our Enterprise tiers exist for exactly this.
+      </p>
+      <div class="grid grid-3 steps">
+        <div class="card step">
+          <p class="num">01 · Measure</p>
+          <h3>Measure real adoption</h3>
+          <p>
+            Seat-by-seat usage, where the tool fails, what people fall back
+            to, and the true cost per seat versus the boring alternative your
+            team already knows.
+          </p>
+        </div>
+        <div class="card step">
+          <p class="num">02 · Decide</p>
+          <h3>Make it stick, or prove it out</h3>
+          <p>
+            Training, workflows, and a bug and feedback pipeline that holds
+            the vendor accountable. Or the evidence that a simpler stack does
+            the job, so leadership can cut it without guessing.
+          </p>
+        </div>
+        <div class="card step">
+          <p class="num">03 · Embed</p>
+          <h3>Stay embedded</h3>
+          <p>
+            The Enterprise retainer keeps adoption measured, teams trained,
+            and vendors accountable long after the rollout hype fades.
+          </p>
+        </div>
+      </div>
+      <div class="cta-row" style="margin-top: 36px;">
+        <a href="#contact" class="btn btn-primary">Book an Enterprise Audit</a>
+      </div>
+    </div>
+  </section>
+
   <!-- Who it's for -->
-  <section id="who">
+  <section id="who" class="section-alt">
     <div class="container">
       <p class="kicker">Who It&rsquo;s For</p>
       <h2>Built for owner-operated businesses with real tech spend.</h2>
       <p class="section-lead">
         If you have 1&ndash;25 employees, a digital presence, and nobody on
         staff whose job is watching your subscriptions, you&rsquo;re exactly
-        who we help.
+        who we help. Larger team rolling out new software or AI tools? See
+        our <a href="#enterprise">Enterprise offering</a>.
       </p>
       <div class="vertical-row">
         {verticals.map((v) => <span class="chip">{v}</span>)}
@@ -294,7 +365,7 @@ const verticals = [
   </section>
 
   <!-- About -->
-  <section id="about" class="section-alt">
+  <section id="about">
     <div class="container">
       <p class="kicker">About</p>
       <h2>Developer-level depth. Business-owner judgment.</h2>
@@ -330,7 +401,7 @@ const verticals = [
   </section>
 
   <!-- Contact -->
-  <section id="contact">
+  <section id="contact" class="section-alt">
     <div class="container">
       <div class="contact-wrap">
         <div class="contact-info">
@@ -375,7 +446,8 @@ const verticals = [
               <option value="Under $100/mo">Under $100/mo</option>
               <option value="$100–$300/mo">$100&ndash;$300/mo</option>
               <option value="$300–$750/mo">$300&ndash;$750/mo</option>
-              <option value="$750+/mo">$750+/mo</option>
+              <option value="$750–$2,000/mo">$750&ndash;$2,000/mo</option>
+              <option value="$2,000+/mo">$2,000+/mo</option>
             </select>
           </div>
           <div class="field full">
