@@ -176,6 +176,38 @@ describe('POST /api/contact', () => {
     expect(sent.html).toContain('Not sure');
   });
 
+  it('includes the interest field in subject, text, and html when set', async () => {
+    const res = await POST(
+      makeContext({ ...VALID_FIELDS, interest: 'Enterprise' }),
+    );
+    expect(res.status).toBe(303);
+
+    const sent = vi.mocked(env.EMAIL.send).mock.calls[0][0] as Record<
+      string,
+      unknown
+    >;
+    expect(sent.subject).toBe(
+      'Enterprise audit request: Acme <Co> & "Sons" (Jane Doe)',
+    );
+    expect(sent.text).toContain('Interest: Enterprise');
+    expect(sent.html).toContain(
+      '<tr><td><strong>Interest</strong></td><td>Enterprise</td></tr>',
+    );
+  });
+
+  it('omits the interest row and keeps the default subject when unset', async () => {
+    const res = await POST(makeContext(VALID_FIELDS));
+    expect(res.status).toBe(303);
+
+    const sent = vi.mocked(env.EMAIL.send).mock.calls[0][0] as Record<
+      string,
+      unknown
+    >;
+    expect(sent.subject).toBe('Audit request: Acme <Co> & "Sons" (Jane Doe)');
+    expect(sent.text).not.toContain('Interest:');
+    expect(sent.html).not.toContain('<strong>Interest</strong>');
+  });
+
   it('returns 500 when the email send fails', async () => {
     env.EMAIL.send = vi.fn(async () => {
       throw new Error('send blew up');
