@@ -1,6 +1,11 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "honedtech",
+  // Pin deploys to Brianlane2's account. The initial launch deploy ran with a
+  // wrangler login for a different account and silently created an orphan
+  // Worker there; with account_id pinned, a wrong-account credential fails
+  // loudly instead.
+  "account_id": "a5cf6e879c42087de72a0ea6fb2dc0af",
   "main": "@astrojs/cloudflare/entrypoints/server",
   "compatibility_date": "2026-07-01",
   "assets": {
