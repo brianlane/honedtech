@@ -235,6 +235,9 @@ const faqSchema = {
       <p class="proof">
         Flat-rate audits from $299 · Written savings report · No obligation beyond the audit
       </p>
+      <p class="proof">
+        Not ready to talk? <a href="/calculator">Try the 2-minute savings calculator</a>.
+      </p>
     </div>
   </section>
 
@@ -571,6 +574,17 @@ const faqSchema = {
           interest: 'Enterprise',
           spend: '$2,000\u2013$10,000/mo',
         },
+        calculator: {
+          kicker: 'Book an Audit',
+          heading: 'Let\u2019s recover what the calculator found.',
+          blurb:
+            'Your estimate is below. Send it over and we\u2019ll confirm the exact savings with a full audit, usually on the first call.',
+          messageLabel: 'What are you paying for today?',
+          messageHint: '(prefilled from your calculator results, edit freely)',
+          submit: 'Request My Audit',
+          interest: 'Calculator',
+          spend: null,
+        },
       };
 
       const el = (id) => document.getElementById(id);
@@ -609,6 +623,18 @@ const faqSchema = {
         const message = el('message');
         if (message instanceof HTMLTextAreaElement && !message.value) {
           message.value = `I run a ${label} business. `;
+        }
+      }
+
+      // Prefill from the savings calculator, which stashes a message in
+      // sessionStorage before sending the visitor here.
+      const calcMsg = sessionStorage.getItem('honed_calc_msg');
+      if (calcMsg) {
+        sessionStorage.removeItem('honed_calc_msg');
+        setMode('calculator');
+        const message = el('message');
+        if (message instanceof HTMLTextAreaElement) {
+          message.value = calcMsg;
         }
       }
     })();
