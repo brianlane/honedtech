@@ -9,47 +9,33 @@ function haystack(probe: DomainProbe): string {
   return `${headerText}\n${probe.html ?? ''}`.toLowerCase();
 }
 
-// Detects the website platform from headers and markup fingerprints. Order
-// matters: the most specific, least spoofable signals are checked first.
+// Platform fingerprints. Regex with escaped dots (not string .includes on
+// hostname-shaped literals) so this reads as content fingerprinting, not URL
+// authorization: it matches a substring anywhere in the page/headers on
+// purpose. Order matters: most specific, least spoofable signals first.
+const FINGERPRINTS: { platform: Platform; patterns: RegExp[] }[] = [
+  { platform: 'shopify', patterns: [/cdn\.shopify\.com/, /x-shopify/, /shopify\.theme/] },
+  { platform: 'wix', patterns: [/x-wix-/, /wix\.com/, /static\.wixstatic\.com/] },
+  {
+    platform: 'squarespace',
+    patterns: [/squarespace\.com/, /static1\.squarespace/, /x-servedby: squarespace/],
+  },
+  { platform: 'webflow', patterns: [/assets\.webflow\.com/, /generator" content="webflow/] },
+  { platform: 'weebly', patterns: [/weebly\.com/, /editmysite\.com/] },
+  { platform: 'godaddy', patterns: [/godaddy/, /websitebuilder\.godaddy/] },
+  {
+    platform: 'wordpress',
+    patterns: [/wp-content/, /wp-includes/, /generator" content="wordpress/],
+  },
+];
+
+// Detects the website platform from headers and markup fingerprints.
 export function detectPlatform(probe: DomainProbe): Platform {
   const text = haystack(probe);
-
-  if (
-    text.includes('cdn.shopify.com') ||
-    text.includes('x-shopify') ||
-    text.includes('shopify.theme')
-  ) {
-    return 'shopify';
-  }
-  if (
-    text.includes('x-wix-') ||
-    text.includes('wix.com') ||
-    text.includes('static.wixstatic.com')
-  ) {
-    return 'wix';
-  }
-  if (
-    text.includes('squarespace.com') ||
-    text.includes('static1.squarespace') ||
-    text.includes('x-servedby: squarespace')
-  ) {
-    return 'squarespace';
-  }
-  if (text.includes('assets.webflow.com') || text.includes('generator" content="webflow')) {
-    return 'webflow';
-  }
-  if (text.includes('weebly.com') || text.includes('editmysite.com')) {
-    return 'weebly';
-  }
-  if (text.includes('godaddy') || text.includes('websitebuilder.godaddy')) {
-    return 'godaddy';
-  }
-  if (
-    text.includes('wp-content') ||
-    text.includes('wp-includes') ||
-    text.includes('generator" content="wordpress')
-  ) {
-    return 'wordpress';
+  for (const { platform, patterns } of FINGERPRINTS) {
+    if (patterns.some((re) => re.test(text))) {
+      return platform;
+    }
   }
   return 'unknown';
 }
