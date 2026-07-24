@@ -7,3 +7,11 @@ worker-configuration.d.ts
 .env
 .DS_Store
 coverage/
+
+# Outreach working files (may contain prospect PII); keep only .example templates
+outreach/prospects.csv
+outreach/findings.jsonl
+outreach/drafts/
+outreach/review.md
+outreach/outreach-log.csv
+outreach/optout.csv
