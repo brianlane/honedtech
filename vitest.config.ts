@@ -17,7 +17,11 @@ export default defineConfig({
       provider: 'v8',
       // Coverage scope is gated at 100% for everything in this list
       // (see AGENTS.md). Grow the list, never shrink the threshold.
-      include: ['src/pages/api/**/*.ts', 'src/lib/prospect/**/*.ts'],
+      include: [
+        'src/pages/api/**/*.ts',
+        'src/lib/prospect/**/*.ts',
+        'src/lib/calculator.ts',
+      ],
       thresholds: {
         statements: 100,
         branches: 100,

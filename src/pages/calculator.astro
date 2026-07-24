@@ -1,0 +1,98 @@
+---
+import Base from '../layouts/Base.astro';
+import { CALCULATOR_SECTIONS } from '../lib/calculator';
+
+const title = 'Tech Waste Calculator | Honed Tech';
+const description =
+  'Estimate how much your business is overpaying for tech every month. A quick, free estimate from Honed Tech, no email required.';
+---
+
+<Base title={title} description={description}>
+  <section class="hero calc-hero">
+    <div class="container">
+      <span class="eyebrow">Free · No email required</span>
+      <h1>How much is your tech stack overcharging you?</h1>
+      <p class="sub">
+        Check what applies to your business. You will see a rough monthly
+        estimate instantly. A real audit is exact, this is the two-minute
+        version.
+      </p>
+    </div>
+  </section>
+
+  <section class="section-alt">
+    <div class="container">
+      <form id="calc" class="calc-form">
+        {CALCULATOR_SECTIONS.map((section) => (
+          <fieldset class="calc-section">
+            <legend>{section.title}</legend>
+            <div class="calc-options">
+              {section.options.map((opt) => (
+                <label class="calc-option">
+                  <input
+                    type={section.mode === 'single' ? 'radio' : 'checkbox'}
+                    name={section.id}
+                    value={opt.id}
+                    data-waste={opt.monthlyWasteUsd}
+                  />
+                  <span>{opt.label}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        ))}
+      </form>
+
+      <div class="calc-result" id="calc-result" aria-live="polite">
+        <p class="calc-result-label">Estimated recoverable spend</p>
+        <p class="calc-figure"><span id="calc-monthly">$0</span> <small>/month</small></p>
+        <p class="calc-annual">About <span id="calc-annual">$0</span> a year</p>
+        <a href="/#contact" id="calc-cta" class="btn btn-primary" data-audit="calculator">
+          Get the exact number: book a $299 audit
+        </a>
+        <p class="calc-note">
+          Estimates are conservative averages, not a quote. Your real audit
+          reviews every line and gives you exact figures.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    import {
+      estimateMonthlyWaste,
+      estimateAnnualWaste,
+      buildPrefillMessage,
+    } from '../lib/calculator';
+
+    const form = document.getElementById('calc') as HTMLFormElement;
+    const monthlyEl = document.getElementById('calc-monthly') as HTMLElement;
+    const annualEl = document.getElementById('calc-annual') as HTMLElement;
+    const cta = document.getElementById('calc-cta') as HTMLAnchorElement;
+
+    const usd = (n: number) => `$${n.toLocaleString('en-US')}`;
+    const selectedIds = () =>
+      Array.from(
+        form.querySelectorAll<HTMLInputElement>('input:checked'),
+      ).map((i) => i.value);
+
+    function update() {
+      const ids = selectedIds();
+      monthlyEl.textContent = usd(estimateMonthlyWaste(ids));
+      annualEl.textContent = usd(estimateAnnualWaste(ids));
+    }
+
+    form.addEventListener('change', update);
+
+    // Carry the selections to the homepage contact form via sessionStorage;
+    // the homepage script reads and clears it on load.
+    cta.addEventListener('click', () => {
+      const message = buildPrefillMessage(selectedIds());
+      if (message) {
+        sessionStorage.setItem('honed_calc_msg', message);
+      }
+    });
+
+    update();
+  </script>
+</Base>

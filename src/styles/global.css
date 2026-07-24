@@ -512,6 +512,96 @@ a.chip:hover {
   color: var(--ink-muted);
 }
 
+/* ---------- Calculator ---------- */
+.calc-hero {
+  padding-bottom: 24px;
+}
+
+.calc-form {
+  display: grid;
+  gap: 20px;
+}
+
+.calc-section {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 20px 22px;
+}
+
+.calc-section legend {
+  font-size: 0.85rem;
+  font-family: var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--teal-400);
+  padding: 0 8px;
+}
+
+.calc-options {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.calc-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+  color: var(--ink-muted);
+  line-height: 1.4;
+}
+
+.calc-option input {
+  margin-top: 3px;
+  accent-color: var(--teal-500);
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.calc-result {
+  margin-top: 28px;
+  border: 1px solid rgba(45, 212, 191, 0.45);
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, rgba(20, 184, 166, 0.08), var(--surface));
+  padding: 28px;
+  text-align: center;
+}
+
+.calc-result-label {
+  font-size: 0.85rem;
+  font-family: var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.calc-figure {
+  font-size: 2.6rem;
+  font-weight: 750;
+  color: var(--ink);
+  margin: 6px 0 2px;
+}
+
+.calc-figure small {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--ink-faint);
+}
+
+.calc-annual {
+  color: var(--ink-muted);
+  margin-bottom: 20px;
+}
+
+.calc-note {
+  margin-top: 16px;
+  font-size: 0.85rem;
+  color: var(--ink-faint);
+}
+
 /* ---------- About ---------- */
 .about-grid {
   display: grid;
