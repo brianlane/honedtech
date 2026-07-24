@@ -1,0 +1,101 @@
+---
+import Base from '../../layouts/Base.astro';
+import { verticals } from '../../data/verticals';
+
+export function getStaticPaths() {
+  return verticals.map((v) => ({ params: { slug: v.slug }, props: { vertical: v } }));
+}
+
+const { vertical } = Astro.props;
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: vertical.faq.map((item) => ({
+    '@type': 'Question',
+    name: item.q,
+    acceptedAnswer: { '@type': 'Answer', text: item.a },
+  })),
+};
+
+const serviceSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Service',
+  name: `Tech stack audit for ${vertical.name}`,
+  provider: { '@type': 'ProfessionalService', name: 'Honed Tech', url: 'https://honedtech.com' },
+  areaServed: 'United States',
+  description: vertical.metaDescription,
+  offers: { '@type': 'Offer', price: '299', priceCurrency: 'USD' },
+};
+
+const contactHref = `/?v=${vertical.slug}#contact`;
+---
+
+<Base title={vertical.metaTitle} description={vertical.metaDescription}>
+  <script
+    is:inline
+    slot="head"
+    type="application/ld+json"
+    set:html={JSON.stringify(serviceSchema)}
+  />
+  <script
+    is:inline
+    slot="head"
+    type="application/ld+json"
+    set:html={JSON.stringify(faqSchema)}
+  />
+
+  <section class="hero">
+    <div class="container">
+      <span class="eyebrow">Tech Stack Audits · {vertical.name}</span>
+      <h1>{vertical.headline}</h1>
+      <p class="sub">{vertical.subhead}</p>
+      <div class="cta-row">
+        <a href={contactHref} class="btn btn-primary">Book a $299 Audit</a>
+        <a href="/#how-it-works" class="btn btn-ghost">See how it works</a>
+      </div>
+      <p class="proof">
+        Flat-rate audits from $299 · Written savings report · No obligation beyond the audit
+      </p>
+    </div>
+  </section>
+
+  <section class="section-alt">
+    <div class="container">
+      <p class="kicker">What We Find</p>
+      <h2>Where {vertical.name} businesses tend to overpay</h2>
+      <ul class="waste-list">
+        {vertical.waste.map((item) => (
+          <li>
+            <span class="x">✕</span>
+            <span><strong>{item.strong}</strong> {item.rest}</span>
+          </li>
+        ))}
+      </ul>
+      <div class="stat-callout">
+        The typical audit uncovers <strong>$200&ndash;$500/month</strong> in
+        recoverable spend. The Snapshot audit is a flat $299 and usually pays
+        for itself in the first month.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="container">
+      <p class="kicker">Questions</p>
+      <h2>Common questions from {vertical.name} owners</h2>
+      <div class="faq-list">
+        {vertical.faq.map((item) => (
+          <details class="faq-item">
+            <summary>{item.q}</summary>
+            <p>{item.a}</p>
+          </details>
+        ))}
+      </div>
+      <div class="cta-row" style="margin-top: 36px;">
+        <a href={contactHref} class="btn btn-primary">Book Your Audit</a>
+        <a href="/#pricing" class="btn btn-ghost">See all pricing</a>
+      </div>
+    </div>
+  </section>
+</Base>
