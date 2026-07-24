@@ -1,8 +1,8 @@
-# Honed Tech — honedtech.com
+# Honed Tech - honedtech.com
 
 Marketing site for Honed Tech: tech stack audits, lean web builds, and managed retainers.
 
-Built the way we build for clients — a static [Astro](https://astro.build) site on
+Built the way we build for clients - a static [Astro](https://astro.build) site on
 [Cloudflare Workers](https://developers.cloudflare.com/workers/), zero client-side
 JavaScript, with one server endpoint for the contact form.
 
@@ -10,8 +10,11 @@ JavaScript, with one server endpoint for the contact form.
 
 - **Astro** (static output) with `@astrojs/cloudflare` for the single on-demand route
 - **Cloudflare Workers + static assets** for hosting
-- **Cloudflare Email Service** (`send_email` binding) — the contact form at
+- **Cloudflare Email Service** (`send_email` binding) - the contact form at
   `POST /api/contact` emails leads from `leads@honedtech.com`
+- **Cloudflare Turnstile** (optional, config-gated) - bot protection on the
+  contact form, on top of the honeypot field
+- **Cloudflare Web Analytics** (optional, config-gated) - privacy-first beacon
 
 ## Development
 
@@ -19,7 +22,46 @@ JavaScript, with one server endpoint for the contact form.
 npm install
 npm run dev        # local dev server (workerd runtime)
 npm run preview    # build + preview the production bundle locally
+npm run check      # wrangler types + astro check (typecheck)
+npm test           # vitest + coverage (100% gate, see below)
 ```
+
+### Test coverage (100%, CI-gated)
+
+Coverage is enforced at **100%** (statements, branches, functions, lines) and
+is a hard CI gate: `npm test` runs vitest with coverage, and the v8
+`thresholds` in [vitest.config.ts](vitest.config.ts) fail the run if anything
+in scope drops below 100%. New logic must land with the tests that keep it
+there.
+
+Coverage scope is the `include` list in the vitest config:
+
+- [x] `src/pages/api/**` (the contact endpoint; `cloudflare:workers` is
+      stubbed via a resolve alias, siteverify `fetch` is mocked)
+
+## Writing style: banned characters
+
+The em dash (U+2014) is banned in any context: code, comments, docs, commit
+messages, UI copy. Use a comma, colon, period, or plain hyphen instead. CI
+fails if one appears in any tracked file. See [AGENTS.md](AGENTS.md).
+
+## Workflow
+
+Branch -> PR -> babysit CI to green -> merge. Never commit directly to main.
+Production deploys run from CI on pushes to main.
+
+## CI/CD ([.github/workflows/ci.yml](.github/workflows/ci.yml))
+
+- **quality**: em dash guard, `astro check` typecheck, build
+- **test**: vitest with the 100% coverage gate (coverage report uploaded as
+  an artifact)
+- **security**: `npm audit --omit=dev --audit-level=high` (non-blocking)
+- **deploy-dry-run** (PR only): `wrangler deploy --dry-run` bundles the
+  Worker exactly as a real deploy would, no API token needed
+- **deploy** (push to main): `astro build && wrangler deploy`, using the
+  `CLOUDFLARE_API_TOKEN` repository secret
+- **CodeQL** ([codeql.yml](.github/workflows/codeql.yml)) on PRs, main, and a
+  weekly schedule; **Dependabot** keeps npm and GitHub Actions current
 
 ## Deploy
 
@@ -27,8 +69,9 @@ npm run preview    # build + preview the production bundle locally
 npm run deploy     # astro build && wrangler deploy
 ```
 
-Requires `wrangler login` with access to the Cloudflare account that owns the
-`honedtech.com` zone.
+Requires `wrangler login` (or `CLOUDFLARE_API_TOKEN` in `.env`) with access
+to the Cloudflare account that owns the `honedtech.com` zone. Normally you
+never do this by hand: merging to main deploys via CI.
 
 ## One-time domain setup (Cloudflare)
 
@@ -43,3 +86,43 @@ Requires `wrangler login` with access to the Cloudflare account that owns the
      destination inbox so replies/direct mail arrive too.
 
 The lead destination address lives in `src/pages/api/contact.ts` (`LEAD_TO`).
+
+## One-time Turnstile setup
+
+Turnstile is fully wired but dormant until configured (the form keeps its
+honeypot either way). To activate, in this order:
+
+1. Create a **managed** Turnstile widget in the Cloudflare dashboard
+   (Turnstile > Add widget) for `honedtech.com`, `www.honedtech.com`,
+   `localhost`, and `127.0.0.1`.
+2. Set the sitekey as the `PUBLIC_TURNSTILE_SITE_KEY` **repository variable**
+   on GitHub (Settings > Secrets and variables > Actions > Variables) and
+   deploy (merge or re-run the deploy job). The widget now renders on the
+   form.
+3. Set the widget secret on the Worker:
+   `npx wrangler secret put TURNSTILE_SECRET_KEY`. From the next request on,
+   `/api/contact` rejects submissions that fail siteverify.
+
+Order matters: setting the secret before the sitekey is deployed would
+reject every submission (no token in the form). The server skips
+verification while the secret is unset, so steps 1-2 are safe on their own.
+
+For local dev, Cloudflare's always-passing test keys work:
+sitekey `1x00000000000000000000AA` in `.env`, secret
+`1x0000000000000000000000000000000AA` in `.dev.vars` (see the `.example`
+files).
+
+## One-time Web Analytics setup
+
+1. Cloudflare dashboard > Analytics & Logs > Web Analytics > add
+   `honedtech.com` and copy the site token.
+2. Set it as the `PUBLIC_CF_BEACON_TOKEN` repository variable on GitHub and
+   deploy. Every page then renders the beacon script.
+
+## SEO
+
+- `robots.txt` and `sitemap-index.xml` (via `@astrojs/sitemap`; the thanks
+  page is excluded)
+- Open Graph + Twitter card tags with a static social card
+  ([public/og.png](public/og.png))
+- JSON-LD `ProfessionalService` schema on the homepage

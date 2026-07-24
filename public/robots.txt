@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /thanks
+
+Sitemap: https://honedtech.com/sitemap-index.xml

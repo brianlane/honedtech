@@ -5,39 +5,144 @@ on:
     branches: [main]
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "24"
+
 jobs:
-  build:
+  quality:
+    name: Quality Checks
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 24
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
 
       - name: Install dependencies
         run: npm ci
 
+      # Em dashes are banned in ANY context (see AGENTS.md). The pattern is
+      # built with printf so this workflow file itself never contains the
+      # character.
+      - name: No em dashes
+        run: |
+          EMDASH=$(printf '\xe2\x80\x94')
+          if git grep -n "$EMDASH" -- ':!package-lock.json'; then
+            echo "::error::Em dash (U+2014) found. The em dash is banned in any context; use a comma, colon, period, or hyphen."
+            exit 1
+          fi
+          echo "No em dashes found."
+
       - name: Generate binding types
         run: npx wrangler types
 
+      - name: Typecheck
+        run: npx astro check
+
       - name: Build
+        env:
+          PUBLIC_TURNSTILE_SITE_KEY: ${{ vars.PUBLIC_TURNSTILE_SITE_KEY }}
+          PUBLIC_CF_BEACON_TOKEN: ${{ vars.PUBLIC_CF_BEACON_TOKEN }}
         run: npm run build
+
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Coverage is a hard gate: vitest.config.ts sets 100% thresholds for
+      # everything in the coverage include list.
+      - name: Run tests with coverage
+        run: npm test
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: coverage-report
+          path: coverage
+          if-no-files-found: ignore
+
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: npm audit (prod deps, high+)
+        run: npm audit --omit=dev --audit-level=high
+
+  # Bundles the Worker exactly as `wrangler deploy` would, so wrangler config
+  # or bundling breakage fails the PR without needing a Cloudflare API token.
+  deploy-dry-run:
+    name: Deploy Dry Run
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        env:
+          PUBLIC_TURNSTILE_SITE_KEY: ${{ vars.PUBLIC_TURNSTILE_SITE_KEY }}
+          PUBLIC_CF_BEACON_TOKEN: ${{ vars.PUBLIC_CF_BEACON_TOKEN }}
+        run: npm run build
+
+      - name: Dry-run deploy
+        run: npx wrangler deploy --dry-run
 
   deploy:
     # Deploys to Cloudflare on pushes to main. Requires the
     # CLOUDFLARE_API_TOKEN repository secret (Workers Scripts:Edit,
     # Workers Routes:Edit on the honedtech.com zone).
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: build
+    needs: [quality, test]
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
 
       - uses: actions/setup-node@v6
         with:
-          node-version: 24
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
 
       - name: Install dependencies
@@ -46,9 +151,11 @@ jobs:
       - name: Build and deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          PUBLIC_TURNSTILE_SITE_KEY: ${{ vars.PUBLIC_TURNSTILE_SITE_KEY }}
+          PUBLIC_CF_BEACON_TOKEN: ${{ vars.PUBLIC_CF_BEACON_TOKEN }}
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
-            echo "CLOUDFLARE_API_TOKEN secret not set — skipping deploy."
+            echo "CLOUDFLARE_API_TOKEN secret not set, skipping deploy."
             exit 0
           fi
           npm run deploy
