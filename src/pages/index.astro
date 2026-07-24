@@ -342,7 +342,9 @@ const verticals = [
         </div>
       </div>
       <div class="cta-row" style="margin-top: 36px;">
-        <a href="#contact" class="btn btn-primary">Book an Enterprise Audit</a>
+        <a href="#contact" class="btn btn-primary" data-audit="enterprise">
+          Book an Enterprise Audit
+        </a>
       </div>
     </div>
   </section>
@@ -405,9 +407,9 @@ const verticals = [
     <div class="container">
       <div class="contact-wrap">
         <div class="contact-info">
-          <p class="kicker">Book an Audit</p>
-          <h2>Find out what you&rsquo;re overpaying for.</h2>
-          <p>
+          <p class="kicker" id="contact-kicker">Book an Audit</p>
+          <h2 id="contact-heading">Find out what you&rsquo;re overpaying for.</h2>
+          <p id="contact-blurb">
             Tell us a little about your business and we&rsquo;ll reach out
             within one business day to schedule your audit. Most clients see
             their estimated savings on the very first call.
@@ -447,13 +449,16 @@ const verticals = [
               <option value="$100–$300/mo">$100&ndash;$300/mo</option>
               <option value="$300–$750/mo">$300&ndash;$750/mo</option>
               <option value="$750–$2,000/mo">$750&ndash;$2,000/mo</option>
-              <option value="$2,000+/mo">$2,000+/mo</option>
+              <option value="$2,000–$10,000/mo">$2,000&ndash;$10,000/mo</option>
+              <option value="$10,000–$50,000/mo">$10,000&ndash;$50,000/mo</option>
+              <option value="$50,000+/mo">$50,000+/mo</option>
             </select>
           </div>
           <div class="field full">
-            <label for="message">What are you paying for today? <span class="opt">(website, email, software, anything you know of)</span></label>
+            <label for="message"><span id="message-label">What are you paying for today?</span> <span class="opt" id="message-hint">(website, email, software, anything you know of)</span></label>
             <textarea id="message" name="message" required></textarea>
           </div>
+          <input type="hidden" name="interest" id="interest" value="" />
           <div class="hp" aria-hidden="true">
             <label for="website">Leave this field empty</label>
             <input id="website" name="website" type="text" tabindex="-1" autocomplete="off" />
@@ -469,7 +474,7 @@ const verticals = [
             </div>
           )}
           <div class="field full">
-            <button type="submit" class="btn btn-primary" style="width: 100%;">
+            <button type="submit" class="btn btn-primary" style="width: 100%;" id="contact-submit">
               Request My Audit
             </button>
           </div>
@@ -486,4 +491,61 @@ const verticals = [
       src="https://challenges.cloudflare.com/turnstile/v0/api.js"
     ></script>
   )}
+
+  <!-- Swaps the contact form copy between the standard audit and the
+       Enterprise audit depending on which CTA the visitor clicked. -->
+  <script is:inline>
+    (() => {
+      const modes = {
+        default: {
+          kicker: 'Book an Audit',
+          heading: 'Find out what you\u2019re overpaying for.',
+          blurb:
+            'Tell us a little about your business and we\u2019ll reach out within one business day to schedule your audit. Most clients see their estimated savings on the very first call.',
+          messageLabel: 'What are you paying for today?',
+          messageHint: '(website, email, software, anything you know of)',
+          submit: 'Request My Audit',
+          interest: '',
+          spend: null,
+        },
+        enterprise: {
+          kicker: 'Book an Enterprise Audit',
+          heading: 'Find out what that rollout is really costing.',
+          blurb:
+            'Tell us about your team and the software you\u2019ve rolled out. We\u2019ll reach out within one business day to scope an adoption audit: usage, training gaps, and what it should really cost.',
+          messageLabel: 'What did you roll out, and what\u2019s not sticking?',
+          messageHint: '(the software, team size, and what staff use instead)',
+          submit: 'Request Enterprise Audit',
+          interest: 'Enterprise',
+          spend: '$2,000\u2013$10,000/mo',
+        },
+      };
+
+      const el = (id) => document.getElementById(id);
+      const setMode = (name) => {
+        const m = modes[name];
+        el('contact-kicker').textContent = m.kicker;
+        el('contact-heading').textContent = m.heading;
+        el('contact-blurb').textContent = m.blurb;
+        el('message-label').textContent = m.messageLabel;
+        el('message-hint').textContent = m.messageHint;
+        el('contact-submit').textContent = m.submit;
+        el('interest').value = m.interest;
+        const spend = el('spend');
+        if (m.spend) {
+          spend.value = m.spend;
+        } else if (spend.value === modes.enterprise.spend) {
+          spend.value = '';
+        }
+      };
+
+      document
+        .querySelectorAll('a[href="#contact"], a[href="/#contact"]')
+        .forEach((a) => {
+          a.addEventListener('click', () => {
+            setMode(a.dataset.audit === 'enterprise' ? 'enterprise' : 'default');
+          });
+        });
+    })();
+  </script>
 </Base>

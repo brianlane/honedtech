@@ -64,6 +64,8 @@ export const POST: APIRoute = async ({ request, redirect }) => {
   const phone = ((form.get('phone') as string) ?? '').trim();
   const spend = ((form.get('spend') as string) ?? '').trim();
   const message = ((form.get('message') as string) ?? '').trim();
+  // Set by the CTA script when the visitor came in via an Enterprise button.
+  const interest = ((form.get('interest') as string) ?? '').trim().slice(0, 100);
 
   if (!name || !business || !email || !message) {
     return new Response('Missing required fields', { status: 400 });
@@ -98,6 +100,7 @@ export const POST: APIRoute = async ({ request, redirect }) => {
     `Email: ${email}`,
     `Phone: ${phone || 'Not provided'}`,
     `Monthly tech spend: ${spend || 'Not sure'}`,
+    ...(interest ? [`Interest: ${interest}`] : []),
     '',
     'Message:',
     message,
@@ -111,6 +114,7 @@ export const POST: APIRoute = async ({ request, redirect }) => {
       <tr><td><strong>Email</strong></td><td>${escapeHtml(email)}</td></tr>
       <tr><td><strong>Phone</strong></td><td>${escapeHtml(phone) || 'Not provided'}</td></tr>
       <tr><td><strong>Monthly tech spend</strong></td><td>${escapeHtml(spend) || 'Not sure'}</td></tr>
+      ${interest ? `<tr><td><strong>Interest</strong></td><td>${escapeHtml(interest)}</td></tr>` : ''}
     </table>
     <h3>Message</h3>
     <p>${escapeHtml(message).replace(/\n/g, '<br>')}</p>
@@ -121,7 +125,7 @@ export const POST: APIRoute = async ({ request, redirect }) => {
       to: LEAD_TO,
       from: LEAD_FROM,
       replyTo: email,
-      subject: `Audit request: ${business} (${name})`,
+      subject: `${interest ? `${interest} audit` : 'Audit'} request: ${business} (${name})`,
       text: lines.join('\n'),
       html,
     });
