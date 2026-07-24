@@ -119,6 +119,16 @@ files).
 2. Set it as the `PUBLIC_CF_BEACON_TOKEN` repository variable on GitHub and
    deploy. Every page then renders the beacon script.
 
+## Newsletter capture
+
+The footer signup posts to `POST /api/subscribe`, which stores subscribers in
+the `SUBSCRIBERS` Cloudflare KV namespace (honeypot protected, with optional
+Turnstile verification when a token is present). `GET/POST /api/unsubscribe?token=`
+removes a subscriber via their one-click token. This is capture-only: sending
+a newsletter is manual or via a verified provider, since the free email plan
+only sends to verified destinations. The KV namespace id is in
+[wrangler.jsonc](wrangler.jsonc).
+
 ## SEO
 
 - `robots.txt` and `sitemap-index.xml` (via `@astrojs/sitemap`; the thanks
