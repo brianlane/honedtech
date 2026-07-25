@@ -83,6 +83,26 @@ const beaconToken = import.meta.env.PUBLIC_CF_BEACON_TOKEN as
 
     <footer class="site-footer">
       <div class="container">
+        <form class="newsletter" method="POST" action="/api/subscribe">
+          <label for="newsletter-email">
+            Occasional notes on cutting tech waste. No spam.
+          </label>
+          <div class="newsletter-row">
+            <input
+              id="newsletter-email"
+              name="email"
+              type="email"
+              required
+              autocomplete="email"
+              placeholder="you@business.com"
+            />
+            <button type="submit" class="btn btn-primary">Subscribe</button>
+          </div>
+          <div class="hp" aria-hidden="true">
+            <label for="newsletter-hp">Leave this field empty</label>
+            <input id="newsletter-hp" name="website" type="text" tabindex="-1" autocomplete="off" />
+          </div>
+        </form>
         <p>&copy; {new Date().getFullYear()} Honed Tech · Phoenix, AZ · Serving clients nationwide</p>
         <p class="tagline">Sharp tech. Clean stack. No waste.</p>
       </div>

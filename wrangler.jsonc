@@ -15,6 +15,9 @@
   "send_email": [
     { "name": "EMAIL" }
   ],
+  "kv_namespaces": [
+    { "binding": "SUBSCRIBERS", "id": "fe8dfd0c1cbc40e49805788f43004fff" }
+  ],
   "observability": {
     "enabled": true
   },
