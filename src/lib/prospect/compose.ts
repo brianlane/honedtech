@@ -15,7 +15,9 @@ export interface ComposedEmail {
 }
 
 const SENDER_NAME = 'Brian Lane';
-const SENDER_EMAIL = 'leads@honedtech.com';
+// A cold email signed by a person should come from that person. leads@ reads
+// like a marketing list and invites the reply nobody sends.
+const SENDER_EMAIL = 'brian@honedtech.com';
 const MAILING_ADDRESS = 'Honed Tech, Phoenix, AZ';
 const SITE = 'https://honedtech.com';
 

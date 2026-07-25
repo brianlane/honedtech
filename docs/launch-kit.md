@@ -49,7 +49,7 @@ pipeline. Two hundred generic ones gets your domain burned.
 
 ## Outreach rules (protect the domain and stay legal)
 
-- **Never bulk-send.** Gmail send-as `leads@honedtech.com`, 10 to 25/day.
+- **Never bulk-send.** Gmail send-as `brian@honedtech.com`, 10 to 25/day.
 - **Every finding must be real.** The scripts only report what they detect.
   If a finding looks wrong when you review the draft, delete that line. One
   false claim costs more than ten sends gain.
@@ -137,7 +137,7 @@ full review across every subscription, license, and tool is the paid part.
    storefront, so no address is published.
 2. Category: primary **Business management consultant**; secondary
    **Website designer** and **Computer consultant**.
-3. Add: `honedtech.com` as the website, `leads@honedtech.com`, service area,
+3. Add: `honedtech.com` as the website, `hello@honedtech.com`, service area,
    and hours.
 4. Services: list them with prices matching the site (Snapshot Audit $299,
    Deep Dive $599, Enterprise Audit $2,499+, Web Builds, Retainers).
