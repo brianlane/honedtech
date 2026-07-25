@@ -1,5 +1,5 @@
 import { totalMonthlyWaste } from './findings';
-import type { Finding } from './types';
+import type { Finding, FindingCode } from './types';
 
 export interface Prospect {
   business: string;
@@ -41,6 +41,41 @@ export function auditUrl(vertical: string | undefined): string {
     utm_campaign: 'prospector',
   });
   return `${SITE}${path}?${params.toString()}`;
+}
+
+// Detected findings map onto calculator options, so a prospect who is not
+// ready to reply can open the calculator already showing their own numbers.
+const FINDING_TO_CALC: Partial<Record<FindingCode, string>> = {
+  ecommerce_platform_no_store: 'shopify_no_store',
+  page_builder_site: 'wix',
+  paid_email_hosting: 'email_1_3',
+};
+
+export function calculatorSelection(findings: Finding[]): string[] {
+  const ids: string[] = [];
+  for (const finding of findings) {
+    const id = FINDING_TO_CALC[finding.code];
+    if (id && !ids.includes(id)) {
+      ids.push(id);
+    }
+  }
+  return ids;
+}
+
+// Returns '' when nothing we detected maps to a priced calculator option, so
+// the email never links to an empty estimate.
+export function calculatorUrl(findings: Finding[]): string {
+  const selection = calculatorSelection(findings);
+  if (selection.length === 0) {
+    return '';
+  }
+  const params = new URLSearchParams({
+    s: selection.join(','),
+    utm_source: 'outreach',
+    utm_medium: 'email',
+    utm_campaign: 'prospector',
+  });
+  return `${SITE}/calculator?${params.toString()}`;
 }
 
 function money(n: number): string {
@@ -93,6 +128,13 @@ export function composeEmail(
   );
   lines.push('');
   lines.push(`Worth a 15-minute look? Details here: ${auditUrl(prospect.vertical)}`);
+  const calcUrl = calculatorUrl(findings);
+  if (calcUrl) {
+    lines.push('');
+    lines.push(
+      `Not ready to talk? Run your own numbers, no email required: ${calcUrl}`,
+    );
+  }
   lines.push('');
   lines.push('Best,');
   lines.push(`${SENDER_NAME}`);
