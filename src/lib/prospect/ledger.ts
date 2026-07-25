@@ -91,16 +91,33 @@ export function ledgerKnownDomains(ledger: OutreachLedger): Set<string> {
   ]);
 }
 
+function addDomains(existing: string[], domains: string[]): string[] {
+  const set = new Set(existing);
+  for (const d of domains) {
+    const bare = normalizeDomain(d);
+    if (bare) set.add(bare);
+  }
+  return [...set];
+}
+
 export function recordDiscovered(
   ledger: OutreachLedger,
   domains: string[],
 ): OutreachLedger {
-  const discovered = new Set(ledger.discovered);
-  for (const d of domains) {
-    const bare = normalizeDomain(d);
-    if (bare) discovered.add(bare);
-  }
-  return { ...ledger, discovered: [...discovered] };
+  return { ...ledger, discovered: addDomains(ledger.discovered, domains) };
+}
+
+// Opting out also marks the domain discovered, so it is suppressed even if the
+// ledger's discovered list is ever cleared or rebuilt.
+export function recordOptedOut(
+  ledger: OutreachLedger,
+  domains: string[],
+): OutreachLedger {
+  return {
+    ...ledger,
+    optedOut: addDomains(ledger.optedOut, domains),
+    discovered: addDomains(ledger.discovered, domains),
+  };
 }
 
 // Splits prospects into those safe to contact and those suppressed.
