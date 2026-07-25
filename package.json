@@ -18,6 +18,7 @@
     "prospect:optout": "tsx scripts/prospect-optout.ts",
     "prospect:sent": "tsx scripts/prospect-sent.ts",
     "prospect:status": "tsx scripts/prospect-status.ts",
+    "prospect:status:email": "tsx scripts/prospect-status-email.ts",
     "prospect:reply": "tsx scripts/prospect-reply.ts",
     "prospect:followup": "tsx scripts/prospect-followup.ts"
   },

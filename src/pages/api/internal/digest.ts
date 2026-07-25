@@ -1,5 +1,11 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
+import {
+  NOTIFY_FROM,
+  NOTIFY_TO,
+  escapeHtml,
+  guardInternalRequest,
+} from '../../../lib/internal';
 
 export const prerender = false;
 
@@ -7,8 +13,6 @@ export const prerender = false;
 // the Worker emails them to the verified inbox for review. Guarded by a shared
 // secret because it can send mail. It never emails prospects: the free email
 // plan only delivers to verified destinations, and a human sends the drafts.
-const DIGEST_TO = 'brianlane2@gmail.com';
-const DIGEST_FROM = { email: 'leads@honedtech.com', name: 'Honed Tech Prospector' };
 
 interface Draft {
   business?: string;
@@ -27,35 +31,14 @@ interface FollowUp {
   daysAgo?: number;
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-// Constant-time-ish comparison so the secret cannot be probed byte by byte.
-function secretMatches(provided: string, expected: string): boolean {
-  if (provided.length !== expected.length) {
-    return false;
-  }
-  let diff = 0;
-  for (let i = 0; i < provided.length; i += 1) {
-    diff |= provided.charCodeAt(i) ^ expected.charCodeAt(i);
-  }
-  return diff === 0;
-}
-
 export const POST: APIRoute = async ({ request }) => {
-  const expected = (env as { DIGEST_SECRET?: string }).DIGEST_SECRET;
-  if (!expected) {
-    return new Response('Digest endpoint is not configured', { status: 503 });
-  }
-
-  const provided = request.headers.get('x-digest-secret') ?? '';
-  if (!secretMatches(provided, expected)) {
-    return new Response('Forbidden', { status: 403 });
+  const rejection = guardInternalRequest(
+    request,
+    (env as { DIGEST_SECRET?: string }).DIGEST_SECRET,
+    'Digest',
+  );
+  if (rejection) {
+    return rejection;
   }
 
   let payload: { drafts?: Draft[]; followUps?: FollowUp[] };
@@ -138,8 +121,8 @@ export const POST: APIRoute = async ({ request }) => {
 
   try {
     await env.EMAIL.send({
-      to: DIGEST_TO,
-      from: DIGEST_FROM,
+      to: NOTIFY_TO,
+      from: NOTIFY_FROM,
       subject,
       text: `${intro}\n${followUpText}\n${textParts.join('\n')}`,
       html: `<p>${escapeHtml(intro)}</p>${followUpHtml}${htmlParts.join('')}`,
