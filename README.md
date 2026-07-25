@@ -119,6 +119,20 @@ files).
 2. Set it as the `PUBLIC_CF_BEACON_TOKEN` repository variable on GitHub and
    deploy. Every page then renders the beacon script.
 
+## Marketing
+
+- **Cold outreach engine**: [outreach/README.md](outreach/README.md). Probes
+  prospect websites for detectable waste and composes evidence-based email
+  drafts for manual review and sending.
+- **Launch kit**: [docs/launch-kit.md](docs/launch-kit.md). Daily outreach
+  rhythm, sending rules and CAN-SPAM baseline, reply FAQ, LinkedIn copy,
+  Google Business Profile checklist, UTM conventions, and what to measure.
+- **Vertical landing pages**: nine `/audits/<slug>` pages (see
+  [src/data/verticals.ts](src/data/verticals.ts)) are both the SEO surface
+  and the link targets for outreach.
+- **Lead magnet**: `/calculator` estimates monthly tech waste and hands the
+  itemized result to the contact form.
+
 ## Newsletter capture
 
 The footer signup posts to `POST /api/subscribe`, which stores subscribers in
