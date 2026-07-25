@@ -15,7 +15,8 @@
     "prospect:audit": "tsx scripts/prospect-audit.ts",
     "prospect:compose": "tsx scripts/prospect-compose.ts",
     "prospect:pipeline": "tsx scripts/prospect-pipeline.ts",
-    "prospect:optout": "tsx scripts/prospect-optout.ts"
+    "prospect:optout": "tsx scripts/prospect-optout.ts",
+    "prospect:sent": "tsx scripts/prospect-sent.ts"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.1.4",

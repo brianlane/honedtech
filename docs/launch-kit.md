@@ -29,6 +29,13 @@ The pipeline runs itself; you handle judgment and sending.
   npm run prospect:optout -- theirdomain.com
   ```
 
+- If you email someone outside the pipeline, log it so they are never queued
+  again:
+
+  ```bash
+  npm run prospect:sent -- owner@theirdomain.com
+  ```
+
 The discovered domains are recorded automatically, so nothing is re-contacted
 even if you never touch a file.
 
