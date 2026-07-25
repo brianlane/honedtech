@@ -22,6 +22,7 @@ export default defineConfig({
         'src/lib/prospect/**/*.ts',
         'src/lib/calculator.ts',
         'src/lib/turnstile.ts',
+        'src/lib/internal.ts',
       ],
       thresholds: {
         statements: 100,

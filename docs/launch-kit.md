@@ -167,6 +167,9 @@ Run `npm run prospect:status` for the live numbers: contacted, awaiting reply,
 replied, booked, declined, bounced, and your reply rate. It also lists any
 follow-ups due.
 
+You also get these by email every Monday morning, but only when something
+changed since the previous week. A quiet week stays silent on purpose.
+
 - Emails sent per week (input you control)
 - Reply rate (aim for 5 to 10% on genuinely specific emails)
 - Calls booked, then audits sold

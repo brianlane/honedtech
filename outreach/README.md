@@ -66,6 +66,26 @@ Check the numbers any time:
 npm run prospect:status
 ```
 
+### Weekly status email
+
+A separate job ([status.yml](../.github/workflows/status.yml)) runs Mondays at
+8am Phoenix and emails the same numbers, **but only when something changed
+since the previous report**. A week where nothing moved sends nothing, so the
+email keeps meaning something when it arrives.
+
+The email leads with what changed ("Contacted: 3 to 6 (+3)", "Newly due for
+follow-up: acme.com") and then lists current totals. Comparison state lives in
+KV under `status-snapshot`, separate from the ledger. Note that a prospect
+simply ageing from 7 to 8 days does not count as a change; becoming newly due
+does.
+
+Force a send, or preview one, with:
+
+```bash
+FORCE_STATUS=1 npm run prospect:status:email
+DRY_RUN=1 npm run prospect:status:email     # print the changes, send nothing
+```
+
 ### Honoring an opt-out
 
 When someone replies asking to stop, suppress them immediately:

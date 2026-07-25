@@ -1,0 +1,50 @@
+name: Weekly Status
+
+# Emails the outreach status once a week, but only when something changed
+# since the previous report. A quiet week sends nothing, which is what keeps
+# the email worth opening.
+on:
+  schedule:
+    # Mondays at 15:00 UTC (8am Phoenix), after the Monday prospector run.
+    - cron: "0 15 * * 1"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Send even if nothing changed
+        type: boolean
+        required: false
+        default: false
+
+concurrency:
+  group: weekly-status
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  report:
+    name: Report status if changed
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Send status if it changed
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          DIGEST_SECRET: ${{ secrets.DIGEST_SECRET }}
+          OUTREACH_KV_NAMESPACE_ID: ${{ vars.OUTREACH_KV_NAMESPACE_ID }}
+          STATUS_URL: ${{ vars.STATUS_URL }}
+          FORCE_STATUS: ${{ inputs.force && '1' || '0' }}
+        run: npm run prospect:status:email
