@@ -520,9 +520,141 @@ a.chip:hover {
   padding-bottom: 24px;
 }
 
+/* Inputs on the left, a result panel that follows you on the right. Seeing
+   the number move as you tick boxes is the whole point of the tool. */
+.calc-layout {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 28px;
+  align-items: start;
+}
+
+@media (max-width: 940px) {
+  .calc-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 .calc-form {
   display: grid;
   gap: 20px;
+}
+
+.calc-help {
+  color: var(--ink-faint);
+  font-size: 0.88rem;
+  margin: 4px 0 12px;
+}
+
+.calc-option-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.calc-option-label {
+  color: var(--ink);
+}
+
+.calc-price {
+  color: var(--teal-400);
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  margin-left: 8px;
+  white-space: nowrap;
+}
+
+.calc-note-inline {
+  font-size: 0.82rem;
+  color: var(--ink-faint);
+  line-height: 1.45;
+}
+
+.calc-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin: 20px 0 4px;
+  text-align: left;
+}
+
+.calc-metrics > div {
+  background: rgba(6, 18, 31, 0.5);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.calc-metric-value {
+  display: block;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.calc-metric-label {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--ink-faint);
+  margin-top: 2px;
+}
+
+.calc-narrative {
+  text-align: left;
+  color: var(--ink-muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+  margin: 16px 0 4px;
+}
+
+.calc-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+  font-size: 0.85rem;
+  text-align: left;
+}
+
+.calc-table th {
+  color: var(--ink-faint);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.calc-table td {
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--ink-muted);
+  vertical-align: top;
+}
+
+.calc-table td:first-child {
+  color: var(--ink);
+}
+
+.calc-table td:not(:first-child) {
+  text-align: right;
+  font-family: var(--mono);
+  white-space: nowrap;
+}
+
+.calc-table td:last-child {
+  color: var(--teal-400);
+}
+
+.calc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.calc-actions .btn {
+  flex: 1 1 auto;
 }
 
 .calc-section {
@@ -565,12 +697,20 @@ a.chip:hover {
 }
 
 .calc-result {
-  margin-top: 28px;
   border: 1px solid rgba(45, 212, 191, 0.45);
   border-radius: var(--radius);
   background: linear-gradient(180deg, rgba(20, 184, 166, 0.08), var(--surface));
-  padding: 28px;
+  padding: 24px;
   text-align: center;
+  position: sticky;
+  top: 88px;
+}
+
+@media (max-width: 940px) {
+  .calc-result {
+    position: static;
+    margin-top: 24px;
+  }
 }
 
 .calc-result-label {

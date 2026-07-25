@@ -9,6 +9,8 @@ import { extractContactEmail } from '../src/lib/prospect/contact';
 import { buildFindings, totalMonthlyWaste } from '../src/lib/prospect/findings';
 import {
   auditUrl,
+  calculatorSelection,
+  calculatorUrl,
   composeEmail,
   verticalPath,
   type Prospect,
@@ -207,6 +209,36 @@ describe('composeEmail + url helpers', () => {
     const url = auditUrl('Law Firms & CPAs');
     expect(url).toContain('/audits/law-firms-cpas');
     expect(url).toContain('utm_source=outreach');
+  });
+
+  it('maps detected findings onto calculator options', () => {
+    const findings = buildFindings({
+      domain: 'acme.com',
+      html: 'cdn.shopify.com brochure',
+      mxRecords: ['aspmx.l.google.com'],
+    });
+    expect(calculatorSelection(findings)).toEqual(['shopify_no_store', 'email_1_3']);
+  });
+
+  it('builds a prefilled calculator link with UTM tags', () => {
+    const findings = buildFindings({ domain: 'acme.com', html: 'cdn.shopify.com brochure' });
+    const url = calculatorUrl(findings);
+    expect(url).toContain('/calculator?s=shopify_no_store');
+    expect(url).toContain('utm_source=outreach');
+  });
+
+  it('returns no calculator link when nothing maps to a priced option', () => {
+    // Missing email auth is a real finding but carries no dollar option.
+    const findings = buildFindings({ domain: 'acme.com' });
+    expect(findings.length).toBeGreaterThan(0);
+    expect(calculatorUrl(findings)).toBe('');
+  });
+
+  it('includes the calculator link in the email when one exists', () => {
+    const findings = buildFindings({ domain: 'acme.com', html: 'cdn.shopify.com brochure' });
+    const email = composeEmail(base, findings);
+    expect(email.body).toContain('Run your own numbers');
+    expect(email.body).toContain('/calculator?s=');
   });
 
   it('composes a dollar-led email with findings', () => {

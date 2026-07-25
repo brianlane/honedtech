@@ -1,91 +1,213 @@
 ---
 import Base from '../layouts/Base.astro';
-import { CALCULATOR_SECTIONS } from '../lib/calculator';
+import { AUDIT_PRICE_USD, CALCULATOR_SECTIONS } from '../lib/calculator';
 
 const title = 'Tech Waste Calculator | Honed Tech';
 const description =
-  'Estimate how much your business is overpaying for tech every month. A quick, free estimate from Honed Tech, no email required.';
+  'Estimate how much your business is overpaying for tech every month. Free, no email required, itemized line by line with 2026 list prices.';
+
+const appSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebApplication',
+  name: 'Honed Tech Waste Calculator',
+  url: 'https://honedtech.com/calculator',
+  applicationCategory: 'BusinessApplication',
+  operatingSystem: 'Any',
+  description,
+  offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+  provider: { '@type': 'ProfessionalService', name: 'Honed Tech' },
+};
 ---
 
 <Base title={title} description={description}>
+  <script
+    is:inline
+    slot="head"
+    type="application/ld+json"
+    set:html={JSON.stringify(appSchema)}
+  />
+
   <section class="hero calc-hero">
     <div class="container">
       <span class="eyebrow">Free · No email required</span>
       <h1>How much is your tech stack overcharging you?</h1>
       <p class="sub">
-        Check what applies to your business. You will see a rough monthly
-        estimate instantly. A real audit is exact, this is the two-minute
-        version.
+        Check what applies to your business. You will see an itemized estimate
+        instantly, priced against current published rates. A real audit is
+        exact, this is the two-minute version.
       </p>
     </div>
   </section>
 
   <section class="section-alt">
     <div class="container">
-      <form id="calc" class="calc-form">
-        {CALCULATOR_SECTIONS.map((section) => (
-          <fieldset class="calc-section">
-            <legend>{section.title}</legend>
-            <div class="calc-options">
-              {section.options.map((opt) => (
-                <label class="calc-option">
-                  <input
-                    type={section.mode === 'single' ? 'radio' : 'checkbox'}
-                    name={section.id}
-                    value={opt.id}
-                    data-waste={opt.monthlyWasteUsd}
-                  />
-                  <span>{opt.label}</span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
-        ))}
-      </form>
+      <div class="calc-layout">
+        <form id="calc" class="calc-form">
+          {CALCULATOR_SECTIONS.map((section) => (
+            <fieldset class="calc-section">
+              <legend>{section.title}</legend>
+              <p class="calc-help">{section.help}</p>
+              <div class="calc-options">
+                {section.options.map((opt) => (
+                  <label class="calc-option">
+                    <input
+                      type={section.mode === 'single' ? 'radio' : 'checkbox'}
+                      name={section.id}
+                      value={opt.id}
+                    />
+                    <span class="calc-option-body">
+                      <span class="calc-option-label">
+                        {opt.label}
+                        {opt.monthlyCostUsd > 0 && (
+                          <span class="calc-price">${opt.monthlyCostUsd}/mo</span>
+                        )}
+                      </span>
+                      {opt.note && <span class="calc-note-inline">{opt.note}</span>}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          ))}
+        </form>
 
-      <div class="calc-result" id="calc-result" aria-live="polite">
-        <p class="calc-result-label">Estimated recoverable spend</p>
-        <p class="calc-figure"><span id="calc-monthly">$0</span> <small>/month</small></p>
-        <p class="calc-annual">About <span id="calc-annual">$0</span> a year</p>
-        <a href="/#contact" id="calc-cta" class="btn btn-primary" data-audit="calculator">
-          Get the exact number: book a $299 audit
-        </a>
-        <p class="calc-note">
-          Estimates are conservative averages, not a quote. Your real audit
-          reviews every line and gives you exact figures.
-        </p>
+        <aside class="calc-result" id="calc-result" aria-live="polite">
+          <p class="calc-result-label">Estimated recoverable spend</p>
+          <p class="calc-figure"><span id="calc-monthly">$0</span> <small>/month</small></p>
+
+          <div class="calc-metrics">
+            <div>
+              <span class="calc-metric-value" id="calc-annual">$0</span>
+              <span class="calc-metric-label">per year</span>
+            </div>
+            <div>
+              <span class="calc-metric-value" id="calc-three-year">$0</span>
+              <span class="calc-metric-label">over 3 years</span>
+            </div>
+            <div>
+              <span class="calc-metric-value" id="calc-current">$0</span>
+              <span class="calc-metric-label">you pay now</span>
+            </div>
+            <div>
+              <span class="calc-metric-value" id="calc-payback">&ndash;</span>
+              <span class="calc-metric-label">audit payback</span>
+            </div>
+          </div>
+
+          <p class="calc-narrative" id="calc-narrative">
+            Pick what applies and your estimate appears here.
+          </p>
+
+          <table class="calc-table" id="calc-table" hidden>
+            <thead>
+              <tr>
+                <th scope="col">What you pay for</th>
+                <th scope="col">Now</th>
+                <th scope="col">After</th>
+                <th scope="col">Saved</th>
+              </tr>
+            </thead>
+            <tbody id="calc-table-body"></tbody>
+          </table>
+
+          <div class="calc-actions">
+            <a href="/#contact" id="calc-cta" class="btn btn-primary" data-audit="calculator">
+              Get the exact number: book a ${AUDIT_PRICE_USD} audit
+            </a>
+            <button type="button" class="btn btn-ghost" id="calc-share">
+              Copy shareable link
+            </button>
+          </div>
+
+          <p class="calc-note">
+            This covers the most common items only, priced at published list
+            rates and always at the low end of the range. A real audit reviews
+            every subscription, license, and account you actually pay for,
+            which is why it usually finds more than this.
+          </p>
+        </aside>
       </div>
     </div>
   </section>
 
   <script>
     import {
-      estimateMonthlyWaste,
-      estimateAnnualWaste,
+      auditPaybackMonths,
+      buildBreakdown,
+      buildNarrative,
       buildPrefillMessage,
+      currentMonthlySpend,
+      decodeSelection,
+      encodeSelection,
+      estimateAnnualWaste,
+      estimateMonthlyWaste,
+      estimateThreeYearWaste,
     } from '../lib/calculator';
 
     const form = document.getElementById('calc') as HTMLFormElement;
-    const monthlyEl = document.getElementById('calc-monthly') as HTMLElement;
-    const annualEl = document.getElementById('calc-annual') as HTMLElement;
+    const el = (id: string) => document.getElementById(id) as HTMLElement;
     const cta = document.getElementById('calc-cta') as HTMLAnchorElement;
+    const shareBtn = document.getElementById('calc-share') as HTMLButtonElement;
+    const table = document.getElementById('calc-table') as HTMLTableElement;
+    const tableBody = document.getElementById('calc-table-body') as HTMLElement;
 
-    const usd = (n: number) => `$${n.toLocaleString('en-US')}`;
+    const usd = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`;
     const selectedIds = () =>
-      Array.from(
-        form.querySelectorAll<HTMLInputElement>('input:checked'),
-      ).map((i) => i.value);
+      Array.from(form.querySelectorAll<HTMLInputElement>('input:checked')).map(
+        (i) => i.value,
+      );
 
-    function update() {
+    function render() {
       const ids = selectedIds();
-      monthlyEl.textContent = usd(estimateMonthlyWaste(ids));
-      annualEl.textContent = usd(estimateAnnualWaste(ids));
+      el('calc-monthly').textContent = usd(estimateMonthlyWaste(ids));
+      el('calc-annual').textContent = usd(estimateAnnualWaste(ids));
+      el('calc-three-year').textContent = usd(estimateThreeYearWaste(ids));
+      el('calc-current').textContent = usd(currentMonthlySpend(ids));
+
+      const payback = auditPaybackMonths(ids);
+      el('calc-payback').textContent =
+        payback === 0 ? '\u2013' : payback === 1 ? '1 month' : `${payback} months`;
+
+      el('calc-narrative').textContent = ids.length
+        ? buildNarrative(ids)
+        : 'Pick what applies and your estimate appears here.';
+
+      const lines = buildBreakdown(ids);
+      tableBody.replaceChildren(
+        ...lines.map((line) => {
+          const row = document.createElement('tr');
+          for (const text of [
+            line.label,
+            usd(line.monthlyCostUsd),
+            usd(line.monthlyAfterUsd),
+            usd(line.monthlyWasteUsd),
+          ]) {
+            const cell = document.createElement('td');
+            cell.textContent = text;
+            // appendChild, not append: the Workers types in scope shadow the
+            // DOM append signature and make it fail the typecheck.
+            row.appendChild(cell);
+          }
+          return row;
+        }),
+      );
+      table.hidden = lines.length === 0;
+
+      // Keep the URL in step so the result survives a reload and can be sent
+      // to a business partner.
+      const encoded = encodeSelection(ids);
+      const url = new URL(window.location.href);
+      if (encoded) {
+        url.searchParams.set('s', encoded);
+      } else {
+        url.searchParams.delete('s');
+      }
+      window.history.replaceState({}, '', url);
     }
 
-    form.addEventListener('change', update);
+    form.addEventListener('change', render);
 
-    // Carry the selections to the homepage contact form via sessionStorage;
-    // the homepage script reads and clears it on load.
+    // Carry the itemized selections to the homepage contact form.
     cta.addEventListener('click', () => {
       const message = buildPrefillMessage(selectedIds());
       if (message) {
@@ -93,6 +215,27 @@ const description =
       }
     });
 
-    update();
+    shareBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        shareBtn.textContent = 'Link copied';
+      } catch {
+        // Clipboard can be blocked; the URL is already correct in the bar.
+        shareBtn.textContent = 'Copy from the address bar';
+      }
+      setTimeout(() => {
+        shareBtn.textContent = 'Copy shareable link';
+      }, 2500);
+    });
+
+    // Restore state from the URL, which is how outreach emails deep-link a
+    // prospect straight to their own numbers.
+    const preset = decodeSelection(new URLSearchParams(location.search).get('s'));
+    for (const id of preset) {
+      const input = form.querySelector<HTMLInputElement>(`input[value="${id}"]`);
+      if (input) input.checked = true;
+    }
+
+    render();
   </script>
 </Base>

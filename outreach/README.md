@@ -135,6 +135,14 @@ per day sending guidance that protects domain reputation.
    never contacted again. If someone asks to stop, add them to
    `outreach/optout.csv`. Both lists suppress future composes.
 
+## The calculator link in every email
+
+When the detected findings map to priced calculator options (Shopify with no
+store, a page builder, paid email), the draft carries a second link to
+`/calculator?s=...` with those options preselected. A prospect who is not
+ready to reply lands on their own numbers instead of a generic page, which is
+the lowest-friction path we have to a conversation.
+
 ## Discovery details
 
 Queries come from `searchTerms` on each entry in
