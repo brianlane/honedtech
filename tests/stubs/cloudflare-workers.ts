@@ -19,6 +19,7 @@ export const env: {
   EMAIL: { send: (message: unknown) => Promise<void> };
   SUBSCRIBERS: MemoryKV;
   TURNSTILE_SECRET_KEY?: string;
+  DIGEST_SECRET?: string;
 } = {
   EMAIL: { send: async () => {} },
   SUBSCRIBERS: new MemoryKV(),

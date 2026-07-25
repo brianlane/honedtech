@@ -36,6 +36,73 @@ export function buildSuppressionSet(
   ]);
 }
 
+// The automated pipeline keeps its state as one JSON value in KV instead of
+// the local CSVs, because the scheduled runner is ephemeral.
+export interface OutreachLedger {
+  discovered: string[];
+  contacted: string[];
+  optedOut: string[];
+}
+
+const EMPTY_LEDGER: OutreachLedger = {
+  discovered: [],
+  contacted: [],
+  optedOut: [],
+};
+
+function domainArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value
+    .filter((v): v is string => typeof v === 'string')
+    .map(normalizeDomain)
+    .filter((d) => d.length > 0);
+}
+
+// Tolerant of missing, empty, or malformed values so a corrupt ledger degrades
+// to "contact nobody twice that we can prove" rather than crashing the run.
+export function parseLedger(text: string): OutreachLedger {
+  if (!text.trim()) {
+    return { ...EMPTY_LEDGER };
+  }
+  try {
+    const raw = JSON.parse(text) as Record<string, unknown>;
+    return {
+      discovered: domainArray(raw.discovered),
+      contacted: domainArray(raw.contacted),
+      optedOut: domainArray(raw.optedOut),
+    };
+  } catch {
+    return { ...EMPTY_LEDGER };
+  }
+}
+
+export function serializeLedger(ledger: OutreachLedger): string {
+  return JSON.stringify(ledger);
+}
+
+// Every domain the pipeline must not surface again.
+export function ledgerKnownDomains(ledger: OutreachLedger): Set<string> {
+  return new Set([
+    ...ledger.discovered,
+    ...ledger.contacted,
+    ...ledger.optedOut,
+  ]);
+}
+
+export function recordDiscovered(
+  ledger: OutreachLedger,
+  domains: string[],
+): OutreachLedger {
+  const discovered = new Set(ledger.discovered);
+  for (const d of domains) {
+    const bare = normalizeDomain(d);
+    if (bare) discovered.add(bare);
+  }
+  return { ...ledger, discovered: [...discovered] };
+}
+
 // Splits prospects into those safe to contact and those suppressed.
 export function partitionProspects(
   prospects: Prospect[],

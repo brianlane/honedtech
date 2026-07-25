@@ -21,6 +21,10 @@ export interface Vertical {
   subhead: string;
   waste: VerticalWaste[];
   faq: VerticalFaq[];
+  // Google Places text-search phrases used by the outreach discovery script.
+  // Kept beside the page content so a new vertical brings its own prospecting
+  // queries instead of a separate list drifting out of sync.
+  searchTerms: string[];
 }
 
 export const verticals: Vertical[] = [
@@ -43,6 +47,7 @@ export const verticals: Vertical[] = [
       { q: 'We are not very technical. Is that a problem?', a: 'That is exactly who we build for. You get a plain-English report with the dollar savings and what to do, no jargon.' },
       { q: 'Do you work with companies outside Arizona?', a: 'Yes. The audit and build work is remote-friendly and we serve clients nationwide.' },
     ],
+    searchTerms: ['hvac contractor', 'plumber', 'air conditioning repair'],
   },
   {
     slug: 'roofing-landscaping',
@@ -63,6 +68,7 @@ export const verticals: Vertical[] = [
       { q: 'What do we get exactly?', a: 'A written report listing every tool, its cost, what it duplicates, and the exact monthly savings with a prioritized fix plan.' },
       { q: 'How long does it take?', a: 'Most audits are delivered in days, not weeks.' },
     ],
+    searchTerms: ['roofing contractor', 'landscaping company', 'tree service'],
   },
   {
     slug: 'pest-control',
@@ -83,6 +89,7 @@ export const verticals: Vertical[] = [
       { q: 'Is there any obligation after the audit?', a: 'None. The audit stands on its own. You decide what, if anything, to fix.' },
       { q: 'Do you serve multi-branch operations?', a: 'Yes, and multi-location licensing is one of the most common places we find waste.' },
     ],
+    searchTerms: ['pest control service', 'termite inspection', 'exterminator'],
   },
   {
     slug: 'law-firms-cpas',
@@ -103,6 +110,7 @@ export const verticals: Vertical[] = [
       { q: 'Can you help us stay compliant while cutting costs?', a: 'Yes. We flag which tools are load-bearing for compliance and focus savings on the ones that are not.' },
       { q: 'Is the report something we can hand to a partner?', a: 'Yes. It is a clean written report with the numbers and recommendations, made to share.' },
     ],
+    searchTerms: ['law firm', 'accounting firm', 'cpa office'],
   },
   {
     slug: 'financial-advisors',
@@ -123,6 +131,7 @@ export const verticals: Vertical[] = [
       { q: 'How much do practices usually save?', a: 'A typical audit surfaces $200 to $500 a month, often more for multi-advisor offices.' },
       { q: 'What does the audit cost?', a: 'A flat $299 for the Snapshot audit. It usually pays for itself in the first month of savings.' },
     ],
+    searchTerms: ['financial advisor', 'wealth management firm', 'insurance agency'],
   },
   {
     slug: 'real-estate-property-management',
@@ -143,6 +152,7 @@ export const verticals: Vertical[] = [
       { q: 'Do you help property managers too?', a: 'Yes. Property management software tiers and add-ons are a common source of waste.' },
       { q: 'Is there a long-term contract?', a: 'No. The audit is a one-time flat fee with no obligation beyond it.' },
     ],
+    searchTerms: ['real estate agency', 'property management company'],
   },
   {
     slug: 'chiropractors-dentists',
@@ -163,6 +173,7 @@ export const verticals: Vertical[] = [
       { q: 'Do you handle patient data?', a: 'No. We review billing and public-facing setup only, never patient records.' },
       { q: 'How fast is the turnaround?', a: 'Most audits land in days, with a short debrief call to walk you through it.' },
     ],
+    searchTerms: ['chiropractor', 'dentist office', 'orthodontist'],
   },
   {
     slug: 'med-spas-gyms',
@@ -183,6 +194,7 @@ export const verticals: Vertical[] = [
       { q: 'Will members notice any change?', a: 'No. Savings come from your back-office stack, not the member-facing experience.' },
       { q: 'What is the first step?', a: 'A flat $299 Snapshot audit. You see the savings before committing to anything else.' },
     ],
+    searchTerms: ['med spa', 'gym', 'yoga studio'],
   },
   {
     slug: 'restaurants-hospitality',
@@ -203,5 +215,6 @@ export const verticals: Vertical[] = [
       { q: 'Do delivery-app fees count?', a: 'We review them and flag cheaper or direct alternatives, but the call stays yours.' },
       { q: 'How much can a single location save?', a: 'A typical audit finds $200 to $500 a month, sometimes more once ordering and POS tiers are reviewed.' },
     ],
+    searchTerms: ['restaurant', 'catering company', 'event venue'],
   },
 ];

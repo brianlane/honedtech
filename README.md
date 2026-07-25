@@ -121,9 +121,14 @@ files).
 
 ## Marketing
 
-- **Cold outreach engine**: [outreach/README.md](outreach/README.md). Probes
-  prospect websites for detectable waste and composes evidence-based email
-  drafts for manual review and sending.
+- **Cold outreach engine**: [outreach/README.md](outreach/README.md). Runs
+  automatically on a weekday schedule
+  ([prospector.yml](.github/workflows/prospector.yml)): discovers prospects via
+  Google Places, probes their sites for detectable waste, composes
+  evidence-based drafts, and emails a digest for manual review. Nothing is sent
+  to a prospect without a human.
+- **Google Business Profile copy**: [docs/gbp-content.md](docs/gbp-content.md),
+  finished text for every profile field.
 - **Launch kit**: [docs/launch-kit.md](docs/launch-kit.md). Daily outreach
   rhythm, sending rules and CAN-SPAM baseline, reply FAQ, LinkedIn copy,
   Google Business Profile checklist, UTM conventions, and what to measure.
