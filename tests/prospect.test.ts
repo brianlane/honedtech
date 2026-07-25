@@ -21,6 +21,7 @@ import {
   parseLedger,
   partitionProspects,
   recordDiscovered,
+  recordOptedOut,
   serializeLedger,
 } from '../src/lib/prospect/ledger';
 import type { DomainProbe } from '../src/lib/prospect/types';
@@ -286,6 +287,26 @@ describe('ledger', () => {
       ['www.a.com', 'b.com', ''],
     );
     expect(next.discovered.sort()).toEqual(['a.com', 'b.com']);
+  });
+
+  it('records opt-outs and suppresses them via the known set', () => {
+    const next = recordOptedOut(
+      { discovered: ['a.com'], contacted: [], optedOut: [] },
+      ['https://www.b.com/contact', ''],
+    );
+    expect(next.optedOut).toEqual(['b.com']);
+    // Also marked discovered so it stays suppressed if discovered is rebuilt.
+    expect(next.discovered.sort()).toEqual(['a.com', 'b.com']);
+    expect(ledgerKnownDomains(next).has('b.com')).toBe(true);
+  });
+
+  it('opting out twice does not duplicate the entry', () => {
+    const once = recordOptedOut(
+      { discovered: [], contacted: [], optedOut: [] },
+      ['b.com'],
+    );
+    const twice = recordOptedOut(once, ['www.b.com']);
+    expect(twice.optedOut).toEqual(['b.com']);
   });
 
   it('partitions prospects against the suppression set', () => {

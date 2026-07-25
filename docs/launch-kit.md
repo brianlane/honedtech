@@ -23,8 +23,11 @@ The pipeline runs itself; you handle judgment and sending.
 - Open the outreach digest email waiting in your inbox
 - Review every draft, delete any finding that looks wrong, send from Gmail
 - Reply to responses same day
-- For opt-outs, add the domain to the ledger's `optedOut` list so it is never
-  contacted again (see the ledger notes in `outreach/README.md`)
+- If anyone asks to stop, suppress them the same day with one command:
+
+  ```bash
+  npm run prospect:optout -- theirdomain.com
+  ```
 
 The discovered domains are recorded automatically, so nothing is re-contacted
 even if you never touch a file.

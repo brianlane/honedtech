@@ -22,6 +22,20 @@ State lives in Cloudflare KV (`OUTREACH` namespace, key `outreach-ledger`), not
 in local CSVs, because the scheduled runner is ephemeral. The ledger tracks
 discovered, contacted, and opted-out domains so nothing is ever surfaced twice.
 
+### Honoring an opt-out
+
+When someone replies asking to stop, suppress them immediately:
+
+```bash
+npm run prospect:optout -- theirdomain.com
+# accepts several at once, and full URLs are fine
+npm run prospect:optout -- acme.com https://www.other.com/contact
+```
+
+That writes to the shared ledger, so the scheduled run will never surface or
+contact them again. The command is idempotent and tells you whether each
+domain was newly suppressed or already on the list.
+
 Run it by hand any time from the Actions tab (`workflow_dispatch`) with a
 custom `limit`, or with `dry_run` to compose without emailing or writing the
 ledger. Locally:
