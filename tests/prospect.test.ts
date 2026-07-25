@@ -15,8 +15,11 @@ import {
 } from '../src/lib/prospect/compose';
 import {
   buildSuppressionSet,
+  dueForFollowUp,
+  isOutcomeStatus,
   ledgerKnownDomains,
   ledgerKnownEmails,
+  ledgerStats,
   normalizeDomain,
   normalizeEmail,
   parseDomainList,
@@ -24,7 +27,9 @@ import {
   partitionProspects,
   recordContacted,
   recordDiscovered,
+  recordFollowUp,
   recordOptedOut,
+  recordOutcome,
   serializeLedger,
 } from '../src/lib/prospect/ledger';
 import type { DomainProbe } from '../src/lib/prospect/types';
@@ -249,6 +254,9 @@ describe('ledger', () => {
     contacted: [],
     contactedEmails: [],
     optedOut: [],
+    contactedAt: {},
+    followedUpAt: {},
+    outcomes: {},
   };
 
   it('parses an empty or blank ledger to empty lists', () => {
@@ -280,10 +288,12 @@ describe('ledger', () => {
 
   it('round-trips through serialize', () => {
     const ledger = {
+      ...EMPTY,
       discovered: ['a.com'],
       contacted: ['b.com'],
       contactedEmails: ['owner@b.com'],
-      optedOut: [],
+      contactedAt: { 'b.com': '2026-07-01T00:00:00.000Z' },
+      outcomes: { 'b.com': { status: 'replied' as const, at: '2026-07-02T00:00:00.000Z' } },
     };
     expect(parseLedger(serializeLedger(ledger))).toEqual(ledger);
   });
@@ -360,6 +370,147 @@ describe('ledger', () => {
     );
     const twice = recordOptedOut(once, ['www.b.com']);
     expect(twice.optedOut).toEqual(['b.com']);
+  });
+
+  it('stamps first contact and never overwrites it', () => {
+    const day1 = new Date('2026-07-01T10:00:00Z');
+    const day2 = new Date('2026-07-09T10:00:00Z');
+    const first = recordContacted(EMPTY, ['acme.com'], [], day1);
+    const second = recordContacted(first, ['acme.com'], [], day2);
+    expect(second.contactedAt['acme.com']).toBe(day1.toISOString());
+  });
+
+  it('ignores blank domains when stamping contact time', () => {
+    const next = recordContacted(EMPTY, [''], [], new Date('2026-07-01T00:00:00Z'));
+    expect(next.contactedAt).toEqual({});
+  });
+
+  it('records and overwrites follow-up timestamps, skipping blanks', () => {
+    const at = new Date('2026-07-10T00:00:00Z');
+    const next = recordFollowUp(EMPTY, ['acme.com', ''], at);
+    expect(next.followedUpAt).toEqual({ 'acme.com': at.toISOString() });
+  });
+
+  it('records an outcome', () => {
+    const at = new Date('2026-07-10T00:00:00Z');
+    const next = recordOutcome(EMPTY, 'www.acme.com', 'replied', at);
+    expect(next.outcomes['acme.com']).toEqual({ status: 'replied', at: at.toISOString() });
+  });
+
+  it('ignores an outcome for a blank domain', () => {
+    expect(recordOutcome(EMPTY, '', 'replied').outcomes).toEqual({});
+  });
+
+  it('treats declined and bounced as opt-outs', () => {
+    expect(recordOutcome(EMPTY, 'a.com', 'declined').optedOut).toContain('a.com');
+    expect(recordOutcome(EMPTY, 'b.com', 'bounced').optedOut).toContain('b.com');
+    expect(recordOutcome(EMPTY, 'c.com', 'booked').optedOut).toEqual([]);
+  });
+
+  it('validates outcome status strings', () => {
+    expect(isOutcomeStatus('replied')).toBe(true);
+    expect(isOutcomeStatus('maybe')).toBe(false);
+  });
+
+  it('parses timestamp and outcome maps, dropping malformed entries', () => {
+    const ledger = parseLedger(
+      JSON.stringify({
+        contactedAt: { 'WWW.A.com': '2026-07-01T00:00:00Z', 'b.com': 42, 'c.com': '' },
+        followedUpAt: 'not-an-object',
+        outcomes: {
+          'd.com': { status: 'replied', at: '2026-07-02T00:00:00Z' },
+          'e.com': { status: 'nonsense', at: '2026-07-02T00:00:00Z' },
+          'f.com': { status: 'replied' },
+          'g.com': 'not-an-object',
+        },
+      }),
+    );
+    expect(ledger.contactedAt).toEqual({ 'a.com': '2026-07-01T00:00:00Z' });
+    expect(ledger.followedUpAt).toEqual({});
+    expect(Object.keys(ledger.outcomes)).toEqual(['d.com']);
+  });
+
+  it('ignores array values for the map fields', () => {
+    const ledger = parseLedger(JSON.stringify({ contactedAt: [], outcomes: [] }));
+    expect(ledger.contactedAt).toEqual({});
+    expect(ledger.outcomes).toEqual({});
+  });
+
+  describe('dueForFollowUp', () => {
+    const now = new Date('2026-07-20T00:00:00Z');
+    const base = recordContacted(
+      EMPTY,
+      ['old.com', 'fresh.com', 'ancient.com'],
+      [],
+      now,
+    );
+    // Hand-set timestamps so each case lands in a known window.
+    const ledger: typeof base = {
+      ...base,
+      contactedAt: {
+        'old.com': '2026-07-13T00:00:00Z', // 7 days ago, due
+        'fresh.com': '2026-07-19T00:00:00Z', // 1 day ago, too soon
+        'ancient.com': '2026-05-01T00:00:00Z', // way past the window
+      },
+    };
+
+    it('returns only prospects inside the window', () => {
+      expect(dueForFollowUp(ledger, now).map((d) => d.domain)).toEqual(['old.com']);
+    });
+
+    it('reports how many days ago contact happened', () => {
+      expect(dueForFollowUp(ledger, now)[0].daysAgo).toBe(7);
+    });
+
+    it('skips anyone who replied, was followed up, or opted out', () => {
+      expect(dueForFollowUp(recordOutcome(ledger, 'old.com', 'replied', now), now)).toEqual([]);
+      expect(dueForFollowUp(recordFollowUp(ledger, ['old.com'], now), now)).toEqual([]);
+      expect(dueForFollowUp(recordOptedOut(ledger, ['old.com']), now)).toEqual([]);
+    });
+
+    it('skips unparseable timestamps', () => {
+      const broken = { ...ledger, contactedAt: { 'x.com': 'not-a-date' } };
+      expect(dueForFollowUp(broken, now)).toEqual([]);
+    });
+
+    it('sorts the longest wait first', () => {
+      const two = {
+        ...ledger,
+        contactedAt: {
+          'a.com': '2026-07-14T00:00:00Z', // 6 days
+          'b.com': '2026-07-10T00:00:00Z', // 10 days
+        },
+      };
+      expect(dueForFollowUp(two, now).map((d) => d.domain)).toEqual(['b.com', 'a.com']);
+    });
+  });
+
+  describe('ledgerStats', () => {
+    it('reports zeros for an empty ledger without dividing by zero', () => {
+      const stats = ledgerStats(EMPTY);
+      expect(stats.contacted).toBe(0);
+      expect(stats.replyRate).toBe(0);
+    });
+
+    it('counts outcomes and computes a reply rate including bookings', () => {
+      let ledger = recordContacted(
+        EMPTY,
+        ['a.com', 'b.com', 'c.com', 'd.com'],
+        ['a@a.com'],
+      );
+      ledger = recordOutcome(ledger, 'a.com', 'replied');
+      ledger = recordOutcome(ledger, 'b.com', 'booked');
+      ledger = recordOutcome(ledger, 'c.com', 'bounced');
+      const stats = ledgerStats(ledger);
+      expect(stats.contacted).toBe(4);
+      expect(stats.emailed).toBe(1);
+      expect(stats.replied).toBe(1);
+      expect(stats.booked).toBe(1);
+      expect(stats.bounced).toBe(1);
+      expect(stats.awaitingReply).toBe(1);
+      // 2 of 4 produced a reply.
+      expect(stats.replyRate).toBe(50);
+    });
   });
 
   it('partitions prospects against the suppression set', () => {

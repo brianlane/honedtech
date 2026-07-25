@@ -67,8 +67,8 @@ report of the exact monthly savings and a prioritized fix plan."
 ## Photos
 
 - Cover: [../public/og.png](../public/og.png)
-- Logo: any square export of the site mark. The site currently uses an inline
-  SVG only, so this is the one asset that still needs generating.
+- Logo: [../public/logo-square.png](../public/logo-square.png), 1024x1024 with
+  padding sized so Google's circular crop never clips the mark.
 
 ## First post
 

@@ -41,6 +41,31 @@ npm run prospect:sent -- acme.com owner@acme.com
 npm run prospect:sent -- owner@acme.com     # an address implies its domain
 ```
 
+### Follow-ups and outcomes
+
+The digest lists anyone contacted five or more days ago with no reply on
+record, capped at three weeks so the list never fills with stale prospects.
+One nudge each is the policy, so marking it removes them permanently:
+
+```bash
+npm run prospect:followup -- theirdomain.com
+```
+
+Record what comes back. This stops follow-ups and feeds the reply rate:
+
+```bash
+npm run prospect:reply -- theirdomain.com replied
+npm run prospect:reply -- theirdomain.com booked
+npm run prospect:reply -- theirdomain.com declined   # also suppresses them
+npm run prospect:reply -- theirdomain.com bounced    # also suppresses them
+```
+
+Check the numbers any time:
+
+```bash
+npm run prospect:status
+```
+
 ### Honoring an opt-out
 
 When someone replies asking to stop, suppress them immediately:

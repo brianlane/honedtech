@@ -8,22 +8,9 @@
 import {
   ledgerKnownDomains,
   normalizeDomain,
-  parseLedger,
   recordOptedOut,
-  serializeLedger,
 } from '../src/lib/prospect/ledger';
-import { kvGet, kvPut } from './lib/kv';
-
-const LEDGER_KEY = 'outreach-ledger';
-
-function required(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    console.error(`${name} is not set (see .env).`);
-    process.exit(1);
-  }
-  return value;
-}
+import { loadLedger } from './lib/ledger-io';
 
 async function main() {
   const inputs = process.argv.slice(2).filter((a) => a.trim().length > 0);
@@ -32,13 +19,10 @@ async function main() {
     process.exit(1);
   }
 
-  const token = required('CLOUDFLARE_API_TOKEN');
-  const namespaceId = required('OUTREACH_KV_NAMESPACE_ID');
-
-  const ledger = parseLedger(await kvGet(token, namespaceId, LEDGER_KEY));
+  const { ledger, save } = await loadLedger();
   const before = new Set(ledger.optedOut);
   const updated = recordOptedOut(ledger, inputs);
-  await kvPut(token, namespaceId, LEDGER_KEY, serializeLedger(updated));
+  await save(updated);
 
   for (const input of inputs) {
     const domain = normalizeDomain(input);

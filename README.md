@@ -129,6 +129,9 @@ files).
   to a prospect without a human.
 - **Google Business Profile copy**: [docs/gbp-content.md](docs/gbp-content.md),
   finished text for every profile field.
+- **Outreach commands**: `prospect:status` (dashboard and follow-ups due),
+  `prospect:sent`, `prospect:followup`, `prospect:reply`, `prospect:optout`.
+  All read and write one shared ledger in Cloudflare KV.
 - **Launch kit**: [docs/launch-kit.md](docs/launch-kit.md). Daily outreach
   rhythm, sending rules and CAN-SPAM baseline, reply FAQ, LinkedIn copy,
   Google Business Profile checklist, UTM conventions, and what to measure.

@@ -38,6 +38,20 @@ export function buildSuppressionSet(
 
 // The automated pipeline keeps its state as one JSON value in KV instead of
 // the local CSVs, because the scheduled runner is ephemeral.
+// What happened after we emailed. Recorded by hand from your inbox, since
+// replies land in Gmail and the pipeline never sees them.
+export const OUTCOME_STATUSES = [
+  'replied',
+  'booked',
+  'declined',
+  'bounced',
+] as const;
+export type OutcomeStatus = (typeof OUTCOME_STATUSES)[number];
+
+export function isOutcomeStatus(value: string): value is OutcomeStatus {
+  return (OUTCOME_STATUSES as readonly string[]).includes(value);
+}
+
 export interface OutreachLedger {
   discovered: string[];
   contacted: string[];
@@ -46,6 +60,12 @@ export interface OutreachLedger {
   // agency that runs both sites), and nobody should get two cold emails.
   contactedEmails: string[];
   optedOut: string[];
+  // domain -> ISO timestamp of first contact, which drives follow-up timing.
+  contactedAt: Record<string, string>;
+  // domain -> ISO timestamp the single allowed follow-up went out.
+  followedUpAt: Record<string, string>;
+  // domain -> what came back, which closes the loop and stops follow-ups.
+  outcomes: Record<string, { status: OutcomeStatus; at: string }>;
 }
 
 const EMPTY_LEDGER: OutreachLedger = {
@@ -53,6 +73,9 @@ const EMPTY_LEDGER: OutreachLedger = {
   contacted: [],
   contactedEmails: [],
   optedOut: [],
+  contactedAt: {},
+  followedUpAt: {},
+  outcomes: {},
 };
 
 export function normalizeEmail(input: string): string {
@@ -67,6 +90,40 @@ function domainArray(value: unknown): string[] {
     .filter((v): v is string => typeof v === 'string')
     .map(normalizeDomain)
     .filter((d) => d.length > 0);
+}
+
+function timestampMap(value: unknown): Record<string, string> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+  const out: Record<string, string> = {};
+  for (const [key, ts] of Object.entries(value as Record<string, unknown>)) {
+    const domain = normalizeDomain(key);
+    if (domain && typeof ts === 'string' && ts.length > 0) {
+      out[domain] = ts;
+    }
+  }
+  return out;
+}
+
+function outcomeMap(
+  value: unknown,
+): Record<string, { status: OutcomeStatus; at: string }> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+  const out: Record<string, { status: OutcomeStatus; at: string }> = {};
+  for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+    const domain = normalizeDomain(key);
+    if (!domain || !entry || typeof entry !== 'object') {
+      continue;
+    }
+    const { status, at } = entry as { status?: unknown; at?: unknown };
+    if (typeof status === 'string' && isOutcomeStatus(status) && typeof at === 'string') {
+      out[domain] = { status, at };
+    }
+  }
+  return out;
 }
 
 function emailArray(value: unknown): string[] {
@@ -92,6 +149,9 @@ export function parseLedger(text: string): OutreachLedger {
       contacted: domainArray(raw.contacted),
       contactedEmails: emailArray(raw.contactedEmails),
       optedOut: domainArray(raw.optedOut),
+      contactedAt: timestampMap(raw.contactedAt),
+      followedUpAt: timestampMap(raw.followedUpAt),
+      outcomes: outcomeMap(raw.outcomes),
     };
   } catch {
     return { ...EMPTY_LEDGER };
@@ -142,17 +202,131 @@ export function recordDiscovered(
 }
 
 // Marks domains and addresses as emailed. Both are also marked discovered so
-// the pair stays suppressed even if the discovered list is rebuilt.
+// the pair stays suppressed even if the discovered list is rebuilt. The first
+// contact timestamp is never overwritten, because follow-up timing keys off
+// the original send, not the most recent bookkeeping.
 export function recordContacted(
   ledger: OutreachLedger,
   domains: string[],
   emails: string[] = [],
+  now: Date = new Date(),
 ): OutreachLedger {
+  const contactedAt = { ...ledger.contactedAt };
+  for (const d of domains) {
+    const bare = normalizeDomain(d);
+    if (bare && !contactedAt[bare]) {
+      contactedAt[bare] = now.toISOString();
+    }
+  }
   return {
     ...ledger,
     contacted: addDomains(ledger.contacted, domains),
     contactedEmails: addEmails(ledger.contactedEmails, emails),
     discovered: addDomains(ledger.discovered, domains),
+    contactedAt,
+  };
+}
+
+export function recordFollowUp(
+  ledger: OutreachLedger,
+  domains: string[],
+  now: Date = new Date(),
+): OutreachLedger {
+  const followedUpAt = { ...ledger.followedUpAt };
+  for (const d of domains) {
+    const bare = normalizeDomain(d);
+    if (bare) {
+      followedUpAt[bare] = now.toISOString();
+    }
+  }
+  return { ...ledger, followedUpAt };
+}
+
+export function recordOutcome(
+  ledger: OutreachLedger,
+  domain: string,
+  status: OutcomeStatus,
+  now: Date = new Date(),
+): OutreachLedger {
+  const bare = normalizeDomain(domain);
+  if (!bare) {
+    return ledger;
+  }
+  const next: OutreachLedger = {
+    ...ledger,
+    outcomes: { ...ledger.outcomes, [bare]: { status, at: now.toISOString() } },
+  };
+  // A bounce or a decline means stop contacting them, same as an opt-out.
+  return status === 'declined' || status === 'bounced'
+    ? recordOptedOut(next, [bare])
+    : next;
+}
+
+export interface FollowUpDue {
+  domain: string;
+  contactedAt: string;
+  daysAgo: number;
+}
+
+// Who is owed the single allowed follow-up: contacted at least `minDays` ago,
+// no reply recorded, no follow-up sent yet, and not opted out. The upper bound
+// keeps the list from filling with stale prospects nobody will chase.
+export function dueForFollowUp(
+  ledger: OutreachLedger,
+  now: Date = new Date(),
+  minDays = 5,
+  maxDays = 21,
+): FollowUpDue[] {
+  const optedOut = new Set(ledger.optedOut);
+  const due: FollowUpDue[] = [];
+
+  for (const [domain, at] of Object.entries(ledger.contactedAt)) {
+    if (optedOut.has(domain) || ledger.outcomes[domain] || ledger.followedUpAt[domain]) {
+      continue;
+    }
+    const sent = Date.parse(at);
+    if (Number.isNaN(sent)) {
+      continue;
+    }
+    const daysAgo = Math.floor((now.getTime() - sent) / 86_400_000);
+    if (daysAgo >= minDays && daysAgo <= maxDays) {
+      due.push({ domain, contactedAt: at, daysAgo });
+    }
+  }
+
+  return due.sort((a, b) => b.daysAgo - a.daysAgo);
+}
+
+export interface LedgerStats {
+  discovered: number;
+  contacted: number;
+  emailed: number;
+  awaitingReply: number;
+  replied: number;
+  booked: number;
+  declined: number;
+  bounced: number;
+  optedOut: number;
+  // Share of contacted domains that produced any reply, as a percentage.
+  replyRate: number;
+}
+
+export function ledgerStats(ledger: OutreachLedger): LedgerStats {
+  const counts = { replied: 0, booked: 0, declined: 0, bounced: 0 };
+  for (const { status } of Object.values(ledger.outcomes)) {
+    counts[status] += 1;
+  }
+  const contacted = ledger.contacted.length;
+  // A booking is a reply too, so both count toward the rate.
+  const anyReply = counts.replied + counts.booked;
+  return {
+    discovered: ledger.discovered.length,
+    contacted,
+    emailed: ledger.contactedEmails.length,
+    awaitingReply: Math.max(contacted - Object.keys(ledger.outcomes).length, 0),
+    ...counts,
+    optedOut: ledger.optedOut.length,
+    replyRate: contacted === 0 ? 0 : Math.round((anyReply / contacted) * 1000) / 10,
   };
 }
 
