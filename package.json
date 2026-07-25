@@ -11,8 +11,10 @@
     "types": "wrangler types",
     "check": "wrangler types && astro check",
     "test": "vitest run --coverage",
+    "prospect:discover": "tsx scripts/prospect-discover.ts",
     "prospect:audit": "tsx scripts/prospect-audit.ts",
-    "prospect:compose": "tsx scripts/prospect-compose.ts"
+    "prospect:compose": "tsx scripts/prospect-compose.ts",
+    "prospect:pipeline": "tsx scripts/prospect-pipeline.ts"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.1.4",

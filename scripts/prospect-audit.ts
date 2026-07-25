@@ -1,24 +1,18 @@
 // prospect:audit - probes each domain in a prospects CSV and writes raw
-// findings to outreach/findings.jsonl. Network I/O lives here; all
-// classification is delegated to the coverage-gated src/lib/prospect code.
+// findings to outreach/findings.jsonl. For manual/ad-hoc runs; the scheduled
+// pipeline (prospect:pipeline) does the same work against the KV ledger.
 //
 // Usage:
 //   npm run prospect:audit -- outreach/prospects.csv
 //
 // prospects.csv columns (header row required):
 //   business,domain,vertical,city,contactName
-import { promises as dns } from 'node:dns';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { buildFindings } from '../src/lib/prospect/findings';
 import { extractContactEmail } from '../src/lib/prospect/contact';
 import type { Prospect } from '../src/lib/prospect/compose';
-import type { DomainProbe } from '../src/lib/prospect/types';
-import { normalizeDomain } from '../src/lib/prospect/ledger';
-
-const UA =
-  'HonedTechBot/1.0 (+https://honedtech.com; tech-stack audit outreach)';
-const TIMEOUT_MS = 12_000;
+import { probeDomain } from './lib/probe';
 
 function parseProspects(csv: string): Prospect[] {
   const rows = csv.split(/\r?\n/).filter((l) => l.trim().length > 0);
@@ -35,62 +29,6 @@ function parseProspects(csv: string): Prospect[] {
       contactName: cells[idx('contactname')] || undefined,
     };
   });
-}
-
-async function fetchWithTimeout(url: string): Promise<Response> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-  try {
-    return await fetch(url, {
-      redirect: 'follow',
-      signal: controller.signal,
-      headers: { 'user-agent': UA },
-    });
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-async function probeDomain(domain: string): Promise<DomainProbe> {
-  const bare = normalizeDomain(domain);
-  const probe: DomainProbe = { domain: bare };
-
-  try {
-    const httpUrl = `http://${bare}`;
-    const res = await fetchWithTimeout(httpUrl);
-    probe.finalUrl = res.url;
-    probe.statusCode = res.status;
-    probe.redirectedToHttps = res.url.startsWith('https://');
-    probe.headers = Object.fromEntries(res.headers.entries());
-    const html = await res.text();
-    probe.html = html;
-    probe.htmlBytes = Buffer.byteLength(html, 'utf8');
-    probe.requestCount =
-      (html.match(/<(script|link|img)\b/gi) ?? []).length || undefined;
-  } catch (err) {
-    console.warn(`  ! fetch failed for ${bare}: ${(err as Error).message}`);
-  }
-
-  try {
-    const mx = await dns.resolveMx(bare);
-    probe.mxRecords = mx.map((r) => r.exchange);
-  } catch {
-    probe.mxRecords = [];
-  }
-  try {
-    probe.txtRecords = (await dns.resolveTxt(bare)).map((r) => r.join(''));
-  } catch {
-    probe.txtRecords = [];
-  }
-  try {
-    probe.dmarcRecords = (await dns.resolveTxt(`_dmarc.${bare}`)).map((r) =>
-      r.join(''),
-    );
-  } catch {
-    probe.dmarcRecords = [];
-  }
-
-  return probe;
 }
 
 async function main() {

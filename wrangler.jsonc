@@ -16,7 +16,10 @@
     { "name": "EMAIL" }
   ],
   "kv_namespaces": [
-    { "binding": "SUBSCRIBERS", "id": "fe8dfd0c1cbc40e49805788f43004fff" }
+    { "binding": "SUBSCRIBERS", "id": "fe8dfd0c1cbc40e49805788f43004fff" },
+    // Outreach ledger for the scheduled prospector: discovered, contacted, and
+    // opted-out domains. Written by scripts over the REST API, not the Worker.
+    { "binding": "OUTREACH", "id": "d9d9c25359da4e94a0d36cbacfa5c79c" }
   ],
   "observability": {
     "enabled": true

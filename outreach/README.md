@@ -8,9 +8,40 @@ email that free routing would replace, missing email auth, slow pages).
 Classification logic lives in [../src/lib/prospect/](../src/lib/prospect/)
 and is unit-tested at 100% coverage. The scripts here only do network I/O.
 
-## Workflow
+## Automated mode (default)
 
-1. Build your list at `outreach/prospects.csv` (see `prospects.example.csv`):
+The [Prospector workflow](../.github/workflows/prospector.yml) runs weekday
+mornings and does the whole chain for you: discovers new prospects through
+Google Places, probes each site, composes drafts, and emails a digest to the
+verified inbox. Nothing is sent to a prospect.
+
+Your job is the last mile: read the digest, sanity-check each draft, send from
+Gmail with send-as `leads@honedtech.com`, and reply-log anyone who opts out.
+
+State lives in Cloudflare KV (`OUTREACH` namespace, key `outreach-ledger`), not
+in local CSVs, because the scheduled runner is ephemeral. The ledger tracks
+discovered, contacted, and opted-out domains so nothing is ever surfaced twice.
+
+Run it by hand any time from the Actions tab (`workflow_dispatch`) with a
+custom `limit`, or with `dry_run` to compose without emailing or writing the
+ledger. Locally:
+
+```bash
+npm run prospect:pipeline -- 8      # discover up to 8 and email the digest
+DRY_RUN=1 npm run prospect:pipeline # compose only, nothing sent or saved
+```
+
+Volume is capped at 12 new prospects per run by default, matching the 10 to 25
+per day sending guidance that protects domain reputation.
+
+## Manual mode (ad-hoc)
+
+1. Build your list at `outreach/prospects.csv`, either by hand (see
+   `prospects.example.csv`) or automatically:
+
+   ```bash
+   npm run prospect:discover -- 15    # appends 15 new prospects via Places
+   ```
 
    ```csv
    business,domain,vertical,city,contactName
@@ -18,7 +49,8 @@ and is unit-tested at 100% coverage. The scripts here only do network I/O.
    ```
 
    `vertical` should match a value from the site's vertical list so the
-   email links to the right `/audits/<slug>` landing page.
+   email links to the right `/audits/<slug>` landing page. Discovery sets it
+   for you.
 
 2. Probe the domains:
 
@@ -44,6 +76,23 @@ and is unit-tested at 100% coverage. The scripts here only do network I/O.
 5. After sending, append the domain to `outreach/outreach-log.csv` so it is
    never contacted again. If someone asks to stop, add them to
    `outreach/optout.csv`. Both lists suppress future composes.
+
+## Discovery details
+
+Queries come from `searchTerms` on each entry in
+[../src/data/verticals.ts](../src/data/verticals.ts), crossed with the Phoenix
+metro cities in [../src/lib/prospect/discover.ts](../src/lib/prospect/discover.ts).
+The plan rotates by day so coverage spreads across every trade and city instead
+of exhausting one first.
+
+Results are filtered before they ever reach you: no website means nothing to
+audit, permanently closed businesses are dropped, and platform-hosted sites
+(Facebook, Yelp, `business.site`, and similar) are excluded because there is no
+stack of their own to review.
+
+Cost note: the field mask requests `places.websiteUri`, which puts calls in a
+higher-priced Places SKU. It is required, but do not widen the mask in
+`scripts/lib/places.ts` without checking current pricing.
 
 ## Optional AI polish
 

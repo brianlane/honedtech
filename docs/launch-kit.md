@@ -5,10 +5,10 @@ this with the outreach engine in [../outreach/README.md](../outreach/README.md).
 
 ## The three lead sources, in priority order
 
-1. **Cold outreach** (highest intent, fully in your control). Run
-   `npm run prospect:audit` then `npm run prospect:compose`, review the
-   drafts, send 10 to 25 per day from Gmail. This is the engine; everything
-   else supports it.
+1. **Cold outreach** (highest intent, fully in your control). Automated: the
+   Prospector workflow discovers, probes, and composes every weekday morning
+   and emails you a drafts digest. Review each draft, send 10 to 25 per day
+   from Gmail. This is the engine; everything else supports it.
 2. **Vertical landing pages** (compounding, zero ongoing effort). The nine
    `/audits/<slug>` pages are the link targets for outreach and the SEO
    surface for "tech audit for <industry>" searches.
@@ -16,13 +16,18 @@ this with the outreach engine in [../outreach/README.md](../outreach/README.md).
    burn, but it is what makes a cold prospect trust you when they search
    your name after reading the email.
 
-## Daily rhythm (30 to 45 minutes)
+## Daily rhythm (20 to 30 minutes)
 
-- Add 10 to 20 new prospects to `outreach/prospects.csv`
-- Run the audit and compose scripts
-- Review every draft, fix anything the detector got wrong, send
-- Log sent domains in `outreach/outreach-log.csv`
-- Reply to responses same day; add opt-outs to `outreach/optout.csv`
+The pipeline runs itself; you handle judgment and sending.
+
+- Open the outreach digest email waiting in your inbox
+- Review every draft, delete any finding that looks wrong, send from Gmail
+- Reply to responses same day
+- For opt-outs, add the domain to the ledger's `optedOut` list so it is never
+  contacted again (see the ledger notes in `outreach/README.md`)
+
+The discovered domains are recorded automatically, so nothing is re-contacted
+even if you never touch a file.
 
 Consistency beats volume. Twenty honest, specific emails a day is a real
 pipeline. Two hundred generic ones gets your domain burned.

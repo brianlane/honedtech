@@ -15,9 +15,13 @@ import {
 } from '../src/lib/prospect/compose';
 import {
   buildSuppressionSet,
+  ledgerKnownDomains,
   normalizeDomain,
   parseDomainList,
+  parseLedger,
   partitionProspects,
+  recordDiscovered,
+  serializeLedger,
 } from '../src/lib/prospect/ledger';
 import type { DomainProbe } from '../src/lib/prospect/types';
 
@@ -234,6 +238,54 @@ describe('ledger', () => {
     const set = buildSuppressionSet('optout.com', 'sent.com');
     expect(set.has('optout.com')).toBe(true);
     expect(set.has('sent.com')).toBe(true);
+  });
+
+  it('parses an empty or blank ledger to empty lists', () => {
+    expect(parseLedger('')).toEqual({ discovered: [], contacted: [], optedOut: [] });
+    expect(parseLedger('   ')).toEqual({ discovered: [], contacted: [], optedOut: [] });
+  });
+
+  it('parses malformed JSON to an empty ledger instead of throwing', () => {
+    expect(parseLedger('{not json')).toEqual({
+      discovered: [],
+      contacted: [],
+      optedOut: [],
+    });
+  });
+
+  it('normalizes and filters ledger entries, dropping non-strings and bad shapes', () => {
+    const ledger = parseLedger(
+      JSON.stringify({
+        discovered: ['HTTPS://WWW.A.com/x', 42, '', null],
+        contacted: 'not-an-array',
+        optedOut: ['b.com'],
+      }),
+    );
+    expect(ledger.discovered).toEqual(['a.com']);
+    expect(ledger.contacted).toEqual([]);
+    expect(ledger.optedOut).toEqual(['b.com']);
+  });
+
+  it('round-trips through serialize', () => {
+    const ledger = { discovered: ['a.com'], contacted: ['b.com'], optedOut: [] };
+    expect(parseLedger(serializeLedger(ledger))).toEqual(ledger);
+  });
+
+  it('unions every list into the known-domain set', () => {
+    const known = ledgerKnownDomains({
+      discovered: ['a.com'],
+      contacted: ['b.com'],
+      optedOut: ['c.com'],
+    });
+    expect([...known].sort()).toEqual(['a.com', 'b.com', 'c.com']);
+  });
+
+  it('records newly discovered domains without duplicating', () => {
+    const next = recordDiscovered(
+      { discovered: ['a.com'], contacted: [], optedOut: [] },
+      ['www.a.com', 'b.com', ''],
+    );
+    expect(next.discovered.sort()).toEqual(['a.com', 'b.com']);
   });
 
   it('partitions prospects against the suppression set', () => {

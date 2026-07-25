@@ -1,0 +1,133 @@
+// prospect:pipeline - the scheduled end-to-end run: discover, probe, classify,
+// compose, then email the drafts digest. State lives in Cloudflare KV so the
+// ephemeral CI runner never rediscovers or re-contacts a domain.
+//
+// Nothing is sent to prospects. The digest goes to the verified inbox and a
+// human sends from Gmail after reviewing each draft.
+//
+// Usage:
+//   npm run prospect:pipeline            # default limit
+//   npm run prospect:pipeline -- 8       # cap new prospects this run
+//
+// Env: GOOGLE_PLACES_API_KEY, CLOUDFLARE_API_TOKEN, OUTREACH_KV_NAMESPACE_ID,
+//      DIGEST_URL, DIGEST_SECRET, optional GEMINI_API_KEY, optional DRY_RUN=1
+import { buildFindings } from '../src/lib/prospect/findings';
+import { extractContactEmail } from '../src/lib/prospect/contact';
+import { composeEmail, type Prospect } from '../src/lib/prospect/compose';
+import {
+  ledgerKnownDomains,
+  parseLedger,
+  recordDiscovered,
+  serializeLedger,
+} from '../src/lib/prospect/ledger';
+import type { Finding } from '../src/lib/prospect/types';
+import { discoverProspects } from './lib/places';
+import { probeDomain } from './lib/probe';
+import { kvGet, kvPut } from './lib/kv';
+import { polishWithGemini } from './lib/polish';
+
+const LEDGER_KEY = 'outreach-ledger';
+
+interface Draft {
+  business: string;
+  domain: string;
+  to: string;
+  subject: string;
+  body: string;
+  findingCount: number;
+}
+
+function required(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    console.error(`${name} is not set.`);
+    process.exit(1);
+  }
+  return value;
+}
+
+async function main() {
+  const limit = Number(process.argv[2] ?? process.env.PROSPECT_LIMIT ?? '12');
+  const dryRun = process.env.DRY_RUN === '1';
+
+  const placesKey = required('GOOGLE_PLACES_API_KEY');
+  const cfToken = required('CLOUDFLARE_API_TOKEN');
+  const namespaceId = required('OUTREACH_KV_NAMESPACE_ID');
+
+  console.log(`Pipeline start (limit ${limit}${dryRun ? ', dry run' : ''})`);
+
+  const ledger = parseLedger(await kvGet(cfToken, namespaceId, LEDGER_KEY));
+  const known = ledgerKnownDomains(ledger);
+  console.log(`Ledger: ${known.size} known domain(s)`);
+
+  const prospects = await discoverProspects({ apiKey: placesKey, known, limit });
+  if (prospects.length === 0) {
+    console.log('No new prospects this run. Nothing to send.');
+    return;
+  }
+
+  const drafts: Draft[] = [];
+  for (const prospect of prospects) {
+    process.stdout.write(`Probing ${prospect.domain} ... `);
+    const probe = await probeDomain(prospect.domain);
+    const findings: Finding[] = buildFindings(probe);
+    // A prospect with nothing detectable has no honest pitch, so skip it.
+    if (findings.length === 0) {
+      console.log('no findings, skipped');
+      continue;
+    }
+    const email = composeEmail(prospect, findings);
+    const body = await polishWithGemini(email.body);
+    drafts.push({
+      business: prospect.business,
+      domain: prospect.domain,
+      to: extractContactEmail(probe.html ?? '', probe.domain) ?? '',
+      subject: email.subject,
+      body,
+      findingCount: findings.length,
+    });
+    console.log(`${findings.length} finding(s), draft ready`);
+  }
+
+  // Discovered domains are recorded even when skipped, so a dead end is never
+  // probed twice on a later run.
+  const updated = recordDiscovered(
+    ledger,
+    prospects.map((p: Prospect) => p.domain),
+  );
+
+  if (dryRun) {
+    console.log(`\nDry run: ${drafts.length} draft(s), ledger not written.`);
+    for (const d of drafts) console.log(`  ${d.business} <${d.to || 'no email found'}>`);
+    return;
+  }
+
+  if (drafts.length > 0) {
+    const digestUrl = required('DIGEST_URL');
+    const digestSecret = required('DIGEST_SECRET');
+    const res = await fetch(digestUrl, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-digest-secret': digestSecret,
+      },
+      body: JSON.stringify({ drafts }),
+    });
+    if (!res.ok) {
+      // Fail loudly without writing the ledger, so the next run retries these
+      // prospects rather than losing them to a silent email failure.
+      throw new Error(
+        `Digest send failed (${res.status}): ${(await res.text()).slice(0, 300)}`,
+      );
+    }
+    console.log(`\nDigest emailed with ${drafts.length} draft(s).`);
+  }
+
+  await kvPut(cfToken, namespaceId, LEDGER_KEY, serializeLedger(updated));
+  console.log(`Ledger updated: ${updated.discovered.length} discovered total.`);
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
