@@ -16,7 +16,7 @@ Google Places, probes each site, composes drafts, and emails a digest to the
 verified inbox. Nothing is sent to a prospect.
 
 Your job is the last mile: read the digest, sanity-check each draft, send from
-Gmail with send-as `leads@honedtech.com`, and reply-log anyone who opts out.
+Gmail with send-as `brian@honedtech.com`, and reply-log anyone who opts out.
 
 State lives in Cloudflare KV (`OUTREACH` namespace, key `outreach-ledger`), not
 in local CSVs, because the scheduled runner is ephemeral. The ledger tracks
@@ -148,7 +148,7 @@ per day sending guidance that protects domain reputation.
    `outreach/review.md` index. Nothing is sent.
 
 4. Review each draft, then send from Gmail with send-as
-   `leads@honedtech.com`. Keep it to 10-25 sends/day to protect domain
+   `brian@honedtech.com`. Keep it to 10-25 sends/day to protect domain
    reputation.
 
 5. After sending, append the domain to `outreach/outreach-log.csv` so it is

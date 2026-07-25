@@ -214,7 +214,7 @@ describe('POST /api/contact', () => {
     });
     const res = await POST(makeContext(VALID_FIELDS));
     expect(res.status).toBe(500);
-    expect(await res.text()).toContain('leads@honedtech.com');
+    expect(await res.text()).toContain('hello@honedtech.com');
   });
 });
 

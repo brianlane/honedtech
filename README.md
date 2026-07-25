@@ -12,6 +12,24 @@ JavaScript, with one server endpoint for the contact form.
 - **Cloudflare Workers + static assets** for hosting
 - **Cloudflare Email Service** (`send_email` binding) - the contact form at
   `POST /api/contact` emails leads from `leads@honedtech.com`
+
+### Branded addresses
+
+All forward to the verified destination inbox, and a catch-all forwards
+anything else so a typo never disappears silently.
+
+| Address | Role |
+|---|---|
+| `brian@honedtech.com` | The human address. Outreach signature and Gmail send-as. |
+| `hello@honedtech.com` | Public contact on the site and the Business Profile. |
+| `support@honedtech.com` | Retainer and client support. |
+| `leads@honedtech.com` | Machine sender only: form notifications and internal digests. Not shown publicly. |
+
+Manage them with `wrangler email routing rules list honedtech.com`. Note that
+wrangler auto-loads `.env`, and the `CLOUDFLARE_API_TOKEN` there lacks Email
+Routing scope, so prefix these commands with
+`env -u CLOUDFLARE_API_TOKEN` and `--env-file /dev/null` to use your OAuth
+login instead.
 - **Cloudflare Turnstile** (optional, config-gated) - bot protection on the
   contact form, on top of the honeypot field
 - **Cloudflare Web Analytics** (optional, config-gated) - privacy-first beacon

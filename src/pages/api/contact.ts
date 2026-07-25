@@ -104,7 +104,7 @@ export const POST: APIRoute = async ({ request, redirect }) => {
   } catch (error) {
     console.error('Lead email failed:', error);
     return new Response(
-      'Something went wrong sending your request. Please email leads@honedtech.com directly.',
+      'Something went wrong sending your request. Please email hello@honedtech.com directly.',
       { status: 500 },
     );
   }

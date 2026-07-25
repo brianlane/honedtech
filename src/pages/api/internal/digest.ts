@@ -111,7 +111,7 @@ export const POST: APIRoute = async ({ request }) => {
     : '';
 
   const intro = drafts.length
-    ? `${drafts.length} outreach draft(s) ready for review. Send from Gmail using send-as leads@honedtech.com, then log the domains so they are not contacted again.`
+    ? `${drafts.length} outreach draft(s) ready for review. Send from Gmail using send-as brian@honedtech.com, then log the domains so they are not contacted again.`
     : 'No new drafts this morning, but you have follow-ups due.';
 
   const subject = drafts.length
