@@ -15,6 +15,7 @@ import { buildFindings } from '../src/lib/prospect/findings';
 import { extractContactEmail } from '../src/lib/prospect/contact';
 import { composeEmail, type Prospect } from '../src/lib/prospect/compose';
 import {
+  dueForFollowUp,
   ledgerKnownDomains,
   ledgerKnownEmails,
   normalizeEmail,
@@ -66,9 +67,19 @@ async function main() {
     `Ledger: ${known.size} known domain(s), ${knownEmails.size} emailed address(es)`,
   );
 
+  // Owed follow-ups ride along in the same digest, so there is only ever one
+  // email to read in the morning.
+  const followUps = dueForFollowUp(ledger).map((f) => ({
+    domain: f.domain,
+    daysAgo: f.daysAgo,
+  }));
+  if (followUps.length > 0) {
+    console.log(`Follow-ups due: ${followUps.length}`);
+  }
+
   const prospects = await discoverProspects({ apiKey: placesKey, known, limit });
-  if (prospects.length === 0) {
-    console.log('No new prospects this run. Nothing to send.');
+  if (prospects.length === 0 && followUps.length === 0) {
+    console.log('No new prospects and no follow-ups due. Nothing to send.');
     return;
   }
 
@@ -115,12 +126,15 @@ async function main() {
   );
 
   if (dryRun) {
-    console.log(`\nDry run: ${drafts.length} draft(s), ledger not written.`);
+    console.log(
+      `\nDry run: ${drafts.length} draft(s), ${followUps.length} follow-up(s), ledger not written.`,
+    );
     for (const d of drafts) console.log(`  ${d.business} <${d.to || 'no email found'}>`);
+    for (const f of followUps) console.log(`  follow up: ${f.domain} (${f.daysAgo}d)`);
     return;
   }
 
-  if (drafts.length > 0) {
+  if (drafts.length > 0 || followUps.length > 0) {
     const digestUrl = required('DIGEST_URL');
     const digestSecret = required('DIGEST_SECRET');
     const res = await fetch(digestUrl, {
@@ -129,7 +143,7 @@ async function main() {
         'content-type': 'application/json',
         'x-digest-secret': digestSecret,
       },
-      body: JSON.stringify({ drafts }),
+      body: JSON.stringify({ drafts, followUps }),
     });
     if (!res.ok) {
       // Fail loudly without writing the ledger, so the next run retries these
@@ -138,7 +152,9 @@ async function main() {
         `Digest send failed (${res.status}): ${(await res.text()).slice(0, 300)}`,
       );
     }
-    console.log(`\nDigest emailed with ${drafts.length} draft(s).`);
+    console.log(
+      `\nDigest emailed: ${drafts.length} draft(s), ${followUps.length} follow-up(s).`,
+    );
 
     // Recorded once the digest is safely delivered. These drafts are now in
     // your hands, so treat the addresses as contacted and never queue them

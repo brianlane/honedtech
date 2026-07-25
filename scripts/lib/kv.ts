@@ -31,6 +31,12 @@ export async function kvPut(
   key: string,
   value: string,
 ): Promise<void> {
+  // An empty write is never intentional and silently destroys the ledger, so
+  // refuse it rather than persisting the result of some upstream failure.
+  if (!value.trim()) {
+    throw new Error(`Refusing to write an empty value to KV key "${key}"`);
+  }
+
   // The values endpoint expects multipart form data.
   const form = new FormData();
   form.set('value', value);

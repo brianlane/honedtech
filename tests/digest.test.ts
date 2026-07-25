@@ -62,8 +62,8 @@ describe('POST /api/internal/digest', () => {
     expect(res.status).toBe(400);
   });
 
-  it('rejects an empty drafts array', async () => {
-    const res = await POST(makeContext({ drafts: [] }, 'top-secret'));
+  it('rejects an empty payload with neither drafts nor follow-ups', async () => {
+    const res = await POST(makeContext({ drafts: [], followUps: [] }, 'top-secret'));
     expect(res.status).toBe(400);
   });
 
@@ -79,10 +79,59 @@ describe('POST /api/internal/digest', () => {
     expect(res.status).toBe(400);
   });
 
+  it('sends a follow-up only digest when there are no new drafts', async () => {
+    const res = await POST(
+      makeContext(
+        { drafts: [], followUps: [{ domain: 'old.com', daysAgo: 7 }] },
+        'top-secret',
+      ),
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ sent: 0, followUps: 1 });
+
+    const sent = vi.mocked(env.EMAIL.send).mock.calls[0][0] as Record<string, unknown>;
+    expect(sent.subject).toBe('Outreach digest: 1 follow-up(s) due');
+    expect(sent.text).toContain('No new drafts this morning');
+    expect(sent.text).toContain('old.com (contacted 7 days ago)');
+    expect(sent.html).toContain('Follow-ups due (1)');
+  });
+
+  it('combines drafts and follow-ups in one digest', async () => {
+    const res = await POST(
+      makeContext(
+        { drafts: [DRAFT], followUps: [{ domain: 'old.com', daysAgo: 9 }] },
+        'top-secret',
+      ),
+    );
+    expect(res.status).toBe(200);
+    const sent = vi.mocked(env.EMAIL.send).mock.calls[0][0] as Record<string, unknown>;
+    expect(sent.subject).toBe('Outreach digest: 1 draft(s) ready, 1 follow-up(s) due');
+  });
+
+  it('drops follow-up entries with no domain and omits the section', async () => {
+    const res = await POST(
+      makeContext({ drafts: [DRAFT], followUps: [{ daysAgo: 5 }, null] }, 'top-secret'),
+    );
+    expect(res.status).toBe(200);
+    const sent = vi.mocked(env.EMAIL.send).mock.calls[0][0] as Record<string, unknown>;
+    expect(sent.subject).toBe('Outreach digest: 1 draft(s) ready');
+    expect(sent.html).not.toContain('Follow-ups due');
+  });
+
+  it('omits the day count when it is not provided', async () => {
+    const res = await POST(
+      makeContext({ drafts: [], followUps: [{ domain: 'old.com' }] }, 'top-secret'),
+    );
+    expect(res.status).toBe(200);
+    const sent = vi.mocked(env.EMAIL.send).mock.calls[0][0] as Record<string, unknown>;
+    expect(sent.text).toContain('- old.com\n');
+    expect(sent.html).toContain('<li>old.com</li>');
+  });
+
   it('emails the digest and reports how many were sent', async () => {
     const res = await POST(makeContext({ drafts: [DRAFT] }, 'top-secret'));
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ sent: 1 });
+    expect(await res.json()).toEqual({ sent: 1, followUps: 0 });
 
     const sent = vi.mocked(env.EMAIL.send).mock.calls[0][0] as Record<string, unknown>;
     expect(sent.to).toBe('brianlane2@gmail.com');

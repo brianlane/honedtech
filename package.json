@@ -16,7 +16,10 @@
     "prospect:compose": "tsx scripts/prospect-compose.ts",
     "prospect:pipeline": "tsx scripts/prospect-pipeline.ts",
     "prospect:optout": "tsx scripts/prospect-optout.ts",
-    "prospect:sent": "tsx scripts/prospect-sent.ts"
+    "prospect:sent": "tsx scripts/prospect-sent.ts",
+    "prospect:status": "tsx scripts/prospect-status.ts",
+    "prospect:reply": "tsx scripts/prospect-reply.ts",
+    "prospect:followup": "tsx scripts/prospect-followup.ts"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.1.4",

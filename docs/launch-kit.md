@@ -20,8 +20,13 @@ this with the outreach engine in [../outreach/README.md](../outreach/README.md).
 
 The pipeline runs itself; you handle judgment and sending.
 
-- Open the outreach digest email waiting in your inbox
+- Open the outreach digest email waiting in your inbox. It carries the new
+  drafts and any follow-ups that came due, so it is the only thing to read.
 - Review every draft, delete any finding that looks wrong, send from Gmail
+- Send the listed follow-ups, then mark each one:
+  `npm run prospect:followup -- theirdomain.com`
+- Record what comes back, which stops follow-ups and feeds your reply rate:
+  `npm run prospect:reply -- theirdomain.com replied|booked|declined|bounced`
 - Reply to responses same day
 - If anyone asks to stop, suppress them the same day with one command:
 
@@ -53,6 +58,10 @@ pipeline. Two hundred generic ones gets your domain burned.
 - **Honor opt-outs immediately**, same day, no exceptions.
 - **One follow-up maximum.** If no reply after 5 to 7 days, send a two-line
   nudge, then stop and move on.
+
+You never have to remember who is owed a nudge. Anyone contacted five or more
+days ago with no recorded reply appears in the digest automatically, and drops
+off once you mark the follow-up or record an outcome.
 
 ### Follow-up template (send once, 5 to 7 days later)
 
@@ -154,10 +163,15 @@ shows up in Cloudflare Web Analytics (Analytics and Logs, Web Analytics).
 
 ## What to measure in the first 90 days
 
+Run `npm run prospect:status` for the live numbers: contacted, awaiting reply,
+replied, booked, declined, bounced, and your reply rate. It also lists any
+follow-ups due.
+
 - Emails sent per week (input you control)
 - Reply rate (aim for 5 to 10% on genuinely specific emails)
 - Calls booked, then audits sold
 - Audit to fix-work conversion, the number that actually determines revenue
 
 If reply rate is under 3%, the findings are too generic before the volume is
-too low. Fix specificity first.
+too low. Fix specificity first. The status command flags this for you once you
+have contacted at least 20 businesses.
