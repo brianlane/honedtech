@@ -16,10 +16,13 @@ import {
 import {
   buildSuppressionSet,
   ledgerKnownDomains,
+  ledgerKnownEmails,
   normalizeDomain,
+  normalizeEmail,
   parseDomainList,
   parseLedger,
   partitionProspects,
+  recordContacted,
   recordDiscovered,
   recordOptedOut,
   serializeLedger,
@@ -241,17 +244,25 @@ describe('ledger', () => {
     expect(set.has('sent.com')).toBe(true);
   });
 
+  const EMPTY = {
+    discovered: [],
+    contacted: [],
+    contactedEmails: [],
+    optedOut: [],
+  };
+
   it('parses an empty or blank ledger to empty lists', () => {
-    expect(parseLedger('')).toEqual({ discovered: [], contacted: [], optedOut: [] });
-    expect(parseLedger('   ')).toEqual({ discovered: [], contacted: [], optedOut: [] });
+    expect(parseLedger('')).toEqual(EMPTY);
+    expect(parseLedger('   ')).toEqual(EMPTY);
   });
 
   it('parses malformed JSON to an empty ledger instead of throwing', () => {
-    expect(parseLedger('{not json')).toEqual({
-      discovered: [],
-      contacted: [],
-      optedOut: [],
-    });
+    expect(parseLedger('{not json')).toEqual(EMPTY);
+  });
+
+  it('reads a ledger written before contactedEmails existed', () => {
+    const legacy = JSON.stringify({ discovered: ['a.com'], contacted: [], optedOut: [] });
+    expect(parseLedger(legacy).contactedEmails).toEqual([]);
   });
 
   it('normalizes and filters ledger entries, dropping non-strings and bad shapes', () => {
@@ -268,8 +279,50 @@ describe('ledger', () => {
   });
 
   it('round-trips through serialize', () => {
-    const ledger = { discovered: ['a.com'], contacted: ['b.com'], optedOut: [] };
+    const ledger = {
+      discovered: ['a.com'],
+      contacted: ['b.com'],
+      contactedEmails: ['owner@b.com'],
+      optedOut: [],
+    };
     expect(parseLedger(serializeLedger(ledger))).toEqual(ledger);
+  });
+
+  it('normalizes emails and drops entries that are not addresses', () => {
+    const ledger = parseLedger(
+      JSON.stringify({ contactedEmails: ['  Owner@ACME.com ', 'not-an-email', 7] }),
+    );
+    expect(ledger.contactedEmails).toEqual(['owner@acme.com']);
+  });
+
+  it('ignores a contactedEmails value that is not an array', () => {
+    expect(parseLedger(JSON.stringify({ contactedEmails: 'nope' })).contactedEmails).toEqual([]);
+  });
+
+  it('records contacted domains and addresses, marking domains discovered', () => {
+    const next = recordContacted(
+      { discovered: [], contacted: [], contactedEmails: [], optedOut: [] },
+      ['acme.com'],
+      ['Owner@Acme.com', 'bad', ''],
+    );
+    expect(next.contacted).toEqual(['acme.com']);
+    expect(next.contactedEmails).toEqual(['owner@acme.com']);
+    expect(next.discovered).toEqual(['acme.com']);
+    expect(ledgerKnownEmails(next).has('owner@acme.com')).toBe(true);
+  });
+
+  it('defaults to no emails and does not duplicate on repeat', () => {
+    const once = recordContacted(
+      { discovered: [], contacted: [], contactedEmails: [], optedOut: [] },
+      ['acme.com'],
+    );
+    expect(once.contactedEmails).toEqual([]);
+    const twice = recordContacted(once, ['www.acme.com'], []);
+    expect(twice.contacted).toEqual(['acme.com']);
+  });
+
+  it('normalizes an email for comparison', () => {
+    expect(normalizeEmail('  Owner@ACME.com ')).toBe('owner@acme.com');
   });
 
   it('unions every list into the known-domain set', () => {

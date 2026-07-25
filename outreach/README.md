@@ -22,6 +22,25 @@ State lives in Cloudflare KV (`OUTREACH` namespace, key `outreach-ledger`), not
 in local CSVs, because the scheduled runner is ephemeral. The ledger tracks
 discovered, contacted, and opted-out domains so nothing is ever surfaced twice.
 
+### Nobody gets emailed twice
+
+Suppression works on two axes, because one address can front several
+businesses (a shared owner, or the agency running both sites):
+
+- **By domain**: anything discovered, contacted, or opted out is never
+  surfaced again.
+- **By address**: every address a digest was built for is recorded, and a
+  later prospect whose scraped email matches is skipped even if its domain is
+  brand new. Duplicates inside a single batch are caught too.
+
+The scheduled run records this automatically once the digest is delivered. If
+you email someone by hand or from another list, log it so the pipeline knows:
+
+```bash
+npm run prospect:sent -- acme.com owner@acme.com
+npm run prospect:sent -- owner@acme.com     # an address implies its domain
+```
+
 ### Honoring an opt-out
 
 When someone replies asking to stop, suppress them immediately:

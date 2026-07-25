@@ -16,7 +16,10 @@ import { extractContactEmail } from '../src/lib/prospect/contact';
 import { composeEmail, type Prospect } from '../src/lib/prospect/compose';
 import {
   ledgerKnownDomains,
+  ledgerKnownEmails,
+  normalizeEmail,
   parseLedger,
+  recordContacted,
   recordDiscovered,
   serializeLedger,
 } from '../src/lib/prospect/ledger';
@@ -58,7 +61,10 @@ async function main() {
 
   const ledger = parseLedger(await kvGet(cfToken, namespaceId, LEDGER_KEY));
   const known = ledgerKnownDomains(ledger);
-  console.log(`Ledger: ${known.size} known domain(s)`);
+  const knownEmails = ledgerKnownEmails(ledger);
+  console.log(
+    `Ledger: ${known.size} known domain(s), ${knownEmails.size} emailed address(es)`,
+  );
 
   const prospects = await discoverProspects({ apiKey: placesKey, known, limit });
   if (prospects.length === 0) {
@@ -76,12 +82,24 @@ async function main() {
       console.log('no findings, skipped');
       continue;
     }
+    // One address can front several businesses, so a domain we have never
+    // seen can still resolve to somebody already emailed. Never email twice.
+    const to = extractContactEmail(probe.html ?? '', probe.domain) ?? '';
+    if (to && knownEmails.has(normalizeEmail(to))) {
+      console.log(`${to} already emailed, skipped`);
+      continue;
+    }
+    if (to) {
+      // Guard against two prospects in this same batch sharing an address.
+      knownEmails.add(normalizeEmail(to));
+    }
+
     const email = composeEmail(prospect, findings);
     const body = await polishWithGemini(email.body);
     drafts.push({
       business: prospect.business,
       domain: prospect.domain,
-      to: extractContactEmail(probe.html ?? '', probe.domain) ?? '',
+      to,
       subject: email.subject,
       body,
       findingCount: findings.length,
@@ -91,7 +109,7 @@ async function main() {
 
   // Discovered domains are recorded even when skipped, so a dead end is never
   // probed twice on a later run.
-  const updated = recordDiscovered(
+  let updated = recordDiscovered(
     ledger,
     prospects.map((p: Prospect) => p.domain),
   );
@@ -121,10 +139,22 @@ async function main() {
       );
     }
     console.log(`\nDigest emailed with ${drafts.length} draft(s).`);
+
+    // Recorded once the digest is safely delivered. These drafts are now in
+    // your hands, so treat the addresses as contacted and never queue them
+    // again, even if you decide not to send one.
+    updated = recordContacted(
+      updated,
+      drafts.map((d) => d.domain),
+      drafts.map((d) => d.to).filter((to) => to.length > 0),
+    );
   }
 
   await kvPut(cfToken, namespaceId, LEDGER_KEY, serializeLedger(updated));
-  console.log(`Ledger updated: ${updated.discovered.length} discovered total.`);
+  console.log(
+    `Ledger updated: ${updated.discovered.length} discovered, ` +
+      `${updated.contactedEmails.length} address(es) emailed.`,
+  );
 }
 
 main().catch((err) => {

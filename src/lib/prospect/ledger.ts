@@ -41,14 +41,23 @@ export function buildSuppressionSet(
 export interface OutreachLedger {
   discovered: string[];
   contacted: string[];
+  // Addresses we have already emailed. Tracked separately from domains
+  // because one address can front several businesses (a shared owner or the
+  // agency that runs both sites), and nobody should get two cold emails.
+  contactedEmails: string[];
   optedOut: string[];
 }
 
 const EMPTY_LEDGER: OutreachLedger = {
   discovered: [],
   contacted: [],
+  contactedEmails: [],
   optedOut: [],
 };
+
+export function normalizeEmail(input: string): string {
+  return input.trim().toLowerCase();
+}
 
 function domainArray(value: unknown): string[] {
   if (!Array.isArray(value)) {
@@ -58,6 +67,16 @@ function domainArray(value: unknown): string[] {
     .filter((v): v is string => typeof v === 'string')
     .map(normalizeDomain)
     .filter((d) => d.length > 0);
+}
+
+function emailArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value
+    .filter((v): v is string => typeof v === 'string')
+    .map(normalizeEmail)
+    .filter((e) => e.includes('@'));
 }
 
 // Tolerant of missing, empty, or malformed values so a corrupt ledger degrades
@@ -71,6 +90,7 @@ export function parseLedger(text: string): OutreachLedger {
     return {
       discovered: domainArray(raw.discovered),
       contacted: domainArray(raw.contacted),
+      contactedEmails: emailArray(raw.contactedEmails),
       optedOut: domainArray(raw.optedOut),
     };
   } catch {
@@ -91,6 +111,11 @@ export function ledgerKnownDomains(ledger: OutreachLedger): Set<string> {
   ]);
 }
 
+// Every address that has already received an email.
+export function ledgerKnownEmails(ledger: OutreachLedger): Set<string> {
+  return new Set(ledger.contactedEmails);
+}
+
 function addDomains(existing: string[], domains: string[]): string[] {
   const set = new Set(existing);
   for (const d of domains) {
@@ -100,11 +125,35 @@ function addDomains(existing: string[], domains: string[]): string[] {
   return [...set];
 }
 
+function addEmails(existing: string[], emails: string[]): string[] {
+  const set = new Set(existing);
+  for (const e of emails) {
+    const clean = normalizeEmail(e);
+    if (clean.includes('@')) set.add(clean);
+  }
+  return [...set];
+}
+
 export function recordDiscovered(
   ledger: OutreachLedger,
   domains: string[],
 ): OutreachLedger {
   return { ...ledger, discovered: addDomains(ledger.discovered, domains) };
+}
+
+// Marks domains and addresses as emailed. Both are also marked discovered so
+// the pair stays suppressed even if the discovered list is rebuilt.
+export function recordContacted(
+  ledger: OutreachLedger,
+  domains: string[],
+  emails: string[] = [],
+): OutreachLedger {
+  return {
+    ...ledger,
+    contacted: addDomains(ledger.contacted, domains),
+    contactedEmails: addEmails(ledger.contactedEmails, emails),
+    discovered: addDomains(ledger.discovered, domains),
+  };
 }
 
 // Opting out also marks the domain discovered, so it is suppressed even if the
