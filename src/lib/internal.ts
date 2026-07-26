@@ -2,8 +2,10 @@
 // and escaping exist once rather than being copied per endpoint.
 
 // Where every internal notification goes. Must stay a verified Email Routing
-// destination: the free plan will not deliver anywhere else.
-export const NOTIFY_TO = 'brianlane2@gmail.com';
+// destination: the free plan will not deliver anywhere else. This is the
+// brand mailbox, which is also where outreach is sent from, so drafts and the
+// replies they produce stay in one place.
+export const NOTIFY_TO = 'honedtechcontact@gmail.com';
 export const NOTIFY_FROM = {
   email: 'leads@honedtech.com',
   name: 'Honed Tech Prospector',

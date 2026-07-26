@@ -15,8 +15,17 @@ JavaScript, with one server endpoint for the contact form.
 
 ### Branded addresses
 
-All forward to the verified destination inbox, and a catch-all forwards
-anything else so a typo never disappears silently.
+All forward to `honedtechcontact@gmail.com`, the brand mailbox, and a
+catch-all forwards anything else so a typo never disappears silently. Outreach
+is sent from that same mailbox, so drafts, replies, form leads, and the
+internal digests all stay in one place instead of split across inboxes.
+
+Forwarding only works to a **verified** Cloudflare destination, so add and
+confirm a new mailbox before pointing anything at it:
+
+```bash
+env -u CLOUDFLARE_API_TOKEN npx wrangler email routing addresses list --env-file /dev/null
+```
 
 | Address | Role |
 |---|---|

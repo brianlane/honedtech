@@ -134,7 +134,7 @@ describe('POST /api/internal/digest', () => {
     expect(await res.json()).toEqual({ sent: 1, followUps: 0 });
 
     const sent = vi.mocked(env.EMAIL.send).mock.calls[0][0] as Record<string, unknown>;
-    expect(sent.to).toBe('brianlane2@gmail.com');
+    expect(sent.to).toBe('honedtechcontact@gmail.com');
     expect(sent.subject).toContain('1 draft(s) ready');
     expect(sent.text).toContain('owner@acme.com');
     expect(sent.text).toContain(DRAFT.subject);

@@ -151,7 +151,7 @@ describe('POST /api/contact', () => {
       string,
       unknown
     >;
-    expect(sent.to).toBe('brianlane2@gmail.com');
+    expect(sent.to).toBe('honedtechcontact@gmail.com');
     expect(sent.replyTo).toBe(VALID_FIELDS.email);
     expect(sent.subject).toBe('Audit request: Acme <Co> & "Sons" (Jane Doe)');
     expect(sent.text).toContain('Phone: 555-0100');
