@@ -8,6 +8,20 @@ email that free routing would replace, missing email auth, slow pages).
 Classification logic lives in [../src/lib/prospect/](../src/lib/prospect/)
 and is unit-tested at 100% coverage. The scripts here only do network I/O.
 
+There are two tracks, and they share only the ledger machinery:
+
+| | SMB track | Enterprise track |
+| --- | --- | --- |
+| Finds accounts by | Google Places, city crossed with trade | WARN layoff filings, then public job boards |
+| Pitches | Website and email waste | Seat licensing and duplicate tooling |
+| Fee | $299 to $599 | $2,499+ |
+| Cadence | Weekday mornings, 12 per run | Tuesdays, about 6 per run |
+| Recipient | Scraped from the site | Looked up by hand on LinkedIn |
+| KV key | `outreach-ledger` | `enterprise-ledger` |
+
+The Enterprise track is documented in [its own section](#enterprise-track)
+below. Everything until then describes the SMB track.
+
 ## Automated mode (default)
 
 The [Prospector workflow](../.github/workflows/prospector.yml) runs weekday
@@ -185,6 +199,86 @@ higher-priced Places SKU. It is required, but do not widen the mask in
 Set `GEMINI_API_KEY` in the environment before `prospect:compose` to have
 each draft rewritten for tone (facts and call-to-action unchanged, em dashes
 stripped). Without the key, the deterministic template is used.
+
+## Enterprise track
+
+A separate weekly pipeline for companies above roughly 50 staff, where the
+SMB approach breaks down entirely. Google Places cannot surface "a 300-person
+company whose rollout stalled", and telling a large employer their site runs
+Wix is not a $2,499 conversation.
+
+So this track inverts the order: find a trigger event first, then research the
+account.
+
+```bash
+npm run enterprise:pipeline           # default limit of 6
+npm run enterprise:pipeline -- 3      # cap accounts this run
+DRY_RUN=1 npm run enterprise:pipeline # research and print briefs, send nothing
+```
+
+Runs automatically Tuesdays via
+[enterprise.yml](../.github/workflows/enterprise.yml), or by hand from the
+Actions tab with a custom limit and state filter.
+
+### Signal one: WARN layoff filings
+
+Every US employer above the statutory size threshold must notify the state
+before a mass layoff. Those registries are public record, and several
+aggregators republish them as JSON. A headcount drop is a dated, checkable
+fact, and per-seat licenses almost never fall with it.
+
+Configure the source with `WARN_API_URL` and `WARN_API_KEY`. The normalizer in
+[../src/lib/enterprise/warn.ts](../src/lib/enterprise/warn.ts) accepts the
+common field spellings across providers, so switching vendors is a config
+change rather than a rewrite. Set `WARN_STATES` to a comma-separated list to
+narrow coverage.
+
+**The lag rule matters more than the data.** Emailing a company days after it
+cuts staff is ghoulish and gets mail blocked. Nothing is surfaced until at
+least 45 days past the effective date, and nothing older than 270 days,
+because by then the seats were probably caught and the pitch stops being
+credible. Both bounds live in `MIN_LAG_DAYS` and `MAX_LAG_DAYS`.
+
+WARN filings name an employer but carry no website, so the name is resolved to
+a domain through the Places client we already pay for. A lookup that returns
+nothing is skipped rather than guessed at: a wrong domain would attribute
+every later signal to a stranger.
+
+### Signal two: public job boards
+
+Every major ATS publishes an unauthenticated JSON feed so companies can embed
+their own listings. We follow the careers-page link to find which one a
+company uses, then read the feed the vendor already intends to be read.
+Greenhouse, Lever, Ashby, SmartRecruiters, Workable, and Recruitee are
+supported.
+
+What a company hires for is what a company runs. A req naming Workday proves
+Workday is deployed, and three BI tools across one job board is the enterprise
+version of the widget-overlap finding on the SMB side. A dedicated
+administrator req means the deployment is big enough to need a full-time
+owner.
+
+### The digest carries briefs, not addresses
+
+Enterprise drafts arrive with `to` deliberately empty and a **research brief**
+listing the evidence behind each signal, with links back to the official state
+filing. Free public signals cannot produce a verified executive address, and
+guessing `first.last@` patterns burns the sending domain, so finding the CFO,
+COO, or VP of IT on LinkedIn stays a manual step. The brief is kept out of the
+draft body on purpose: pasting filing URLs into a cold email reads as
+surveillance rather than homework.
+
+Accounts are ranked by signal strength rather than headcount, which is what
+lets a 60-person company that just cut 40 people outrank a quiet 900-person
+one. Scoring lives in
+[../src/lib/enterprise/score.ts](../src/lib/enterprise/score.ts).
+
+### Where the email lands
+
+Enterprise drafts link to [/enterprise](https://honedtech.com/enterprise),
+which carries a seat-reclaim estimator. When we know the headcount from the
+filing, the link is deep-linked to their own number so a reader who is not
+ready to reply still lands on their own figures.
 
 ## Files (all gitignored except the .example templates)
 
