@@ -82,6 +82,56 @@ export function detectEmailProvider(probe: DomainProbe): EmailProvider {
   return 'other';
 }
 
+// Accessibility overlay vendors. Same escaped-dot regex convention as the
+// platform fingerprints above: this is content matching, not URL parsing.
+const OVERLAY_VENDORS: RegExp[] = [
+  /acsbapp\.com/,
+  /accessibe\.com/,
+  /userway\.org/,
+  /audioeye\.com/,
+  /equalweb\.com/,
+];
+
+// True when the page loads an accessibility overlay widget. These bill monthly
+// and do not fix the underlying markup, so the subscription buys a toolbar and
+// a false sense of compliance.
+export function hasAccessibilityOverlay(probe: DomainProbe): boolean {
+  const text = haystack(probe);
+  return OVERLAY_VENDORS.some((re) => re.test(text));
+}
+
+// Third-party bolt-on widgets that each carry their own subscription. Two or
+// more on one site is the concrete version of "your tools overlap".
+const WIDGET_VENDORS: { name: string; pattern: RegExp }[] = [
+  { name: 'Calendly', pattern: /calendly\.com/ },
+  { name: 'Intercom', pattern: /intercom\.(io|com)/ },
+  { name: 'Drift', pattern: /js\.driftt\.com|drift\.com/ },
+  { name: 'Tawk', pattern: /tawk\.to/ },
+  { name: 'HubSpot', pattern: /hs-scripts\.com|hubspot\.com/ },
+  { name: 'Mailchimp', pattern: /chimpstatic\.com|mailchimp\.com/ },
+  { name: 'Podium', pattern: /podium\.com/ },
+  { name: 'Birdeye', pattern: /birdeye\.com/ },
+];
+
+// Names of the bolt-on widgets present, in a stable order.
+export function detectWidgetVendors(probe: DomainProbe): string[] {
+  const text = haystack(probe);
+  return WIDGET_VENDORS.filter((v) => v.pattern.test(text)).map((v) => v.name);
+}
+
+// The newest copyright year published on the page, or null when there is
+// none. Anchored to a copyright marker so phone numbers and ids cannot match,
+// and it takes the max so a "2019-2024" range reads as 2024.
+export function latestCopyrightYear(probe: DomainProbe): number | null {
+  const matches = (probe.html ?? '').matchAll(
+    /(?:\u00a9|&copy;|copyright)[^0-9]{0,12}(?:\d{4}\s*[-\u2013]\s*)?(\d{4})/gi,
+  );
+  const years = [...matches]
+    .map((m) => Number(m[1]))
+    .filter((y) => y >= 1990 && y <= 2100);
+  return years.length > 0 ? Math.max(...years) : null;
+}
+
 // True when neither SPF (in TXT) nor DMARC is published. Missing email
 // authentication hurts deliverability and is a common oversight.
 export function missingEmailAuth(probe: DomainProbe): boolean {

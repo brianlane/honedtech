@@ -41,6 +41,7 @@ export const verticals: Vertical[] = [
       { strong: 'Field-service platforms on their top tier', rest: 'when you use a third of the features.' },
       { strong: 'Separate booking, review, and SMS tools', rest: 'that overlap with what your CRM already does.' },
       { strong: 'A slow page-builder website', rest: 'that costs a monthly subscription and still loads slowly on a phone in a driveway.' },
+      { strong: 'Old office and fax lines', rest: 'still billing years after dispatch moved to mobile phones and email.' },
     ],
     faq: [
       { q: 'Will an audit interrupt our dispatching?', a: 'No. The audit is a review of what you pay for. Nothing changes on your systems until you approve a specific fix.' },
@@ -83,6 +84,7 @@ export const verticals: Vertical[] = [
       { strong: 'Route and billing platforms on premium tiers', rest: 'with add-ons nobody on the team uses.' },
       { strong: 'A separate online-booking tool', rest: 'that duplicates your service software.' },
       { strong: 'Managed hosting for a simple site', rest: 'that a lean static build serves faster and cheaper.' },
+      { strong: 'Phone numbers and fax lines nobody answers', rest: 'left behind by old offices and technicians who moved on.' },
     ],
     faq: [
       { q: 'Our software runs the whole business. Is switching risky?', a: 'We rarely start by switching core software. Most savings come from tier changes, cut add-ons, and consolidating side tools.' },
@@ -125,6 +127,7 @@ export const verticals: Vertical[] = [
       { strong: 'CRM and planning suites on top tiers', rest: 'with modules you never turned on.' },
       { strong: 'Duplicate email and scheduling tools', rest: 'that came bundled and now bill separately.' },
       { strong: 'A costly website subscription', rest: 'for a compliance-approved brochure site.' },
+      { strong: 'Marketing retainers you cannot measure', rest: 'billing monthly without a report that ties the spend to actual leads.' },
     ],
     faq: [
       { q: 'Do you understand compliance constraints?', a: 'We flag anything that looks compliance-driven and leave those decisions to you. Savings come from the rest.' },
@@ -146,6 +149,7 @@ export const verticals: Vertical[] = [
       { strong: 'Multiple lead-gen subscriptions', rest: 'that feed the same pipeline.' },
       { strong: 'A premium website and IDX plan', rest: 'far above what your traffic needs.' },
       { strong: 'Per-agent tool licenses', rest: 'still billing for agents who have moved on.' },
+      { strong: 'Marketing retainers above the going rate', rest: 'charging well past the 10 to 20 percent of ad spend that is standard, with no monthly report.' },
     ],
     faq: [
       { q: 'Our brokerage mandates some tools. Can you work around that?', a: 'Yes. We note the required tools and find savings everywhere else.' },
@@ -188,6 +192,7 @@ export const verticals: Vertical[] = [
       { strong: 'Booking and membership platforms on top tiers', rest: 'with add-ons nobody uses.' },
       { strong: 'Separate email and SMS marketing tools', rest: 'that overlap with your booking software.' },
       { strong: 'A heavy website subscription', rest: 'for a site a lean build serves faster.' },
+      { strong: 'Card processing on the terms you signed years ago', rest: 'with recurring-billing and statement fees nobody has re-quoted since.' },
     ],
     faq: [
       { q: 'We have multiple locations. Does that change things?', a: 'It usually increases the savings. Per-location licensing is a common overspend.' },
@@ -209,6 +214,7 @@ export const verticals: Vertical[] = [
       { strong: 'POS platforms on premium tiers', rest: 'with modules you do not run.' },
       { strong: 'Multiple online-ordering and reservation tools', rest: 'that each charge a fee or subscription.' },
       { strong: 'A page-builder website', rest: 'when a fast static site with your menu costs far less.' },
+      { strong: 'Card processing nobody has re-quoted', rest: 'padded with PCI, statement, and regulatory-recovery fees on top of the rate itself.' },
     ],
     faq: [
       { q: 'Online ordering is core to us. Would you remove it?', a: 'No. We keep what drives revenue and cut the overlapping or over-tiered tools around it.' },

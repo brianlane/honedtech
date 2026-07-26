@@ -51,6 +51,7 @@ const FINDING_TO_CALC: Partial<Record<FindingCode, string>> = {
   ecommerce_platform_no_store: 'shopify_no_store',
   page_builder_site: 'wix',
   paid_email_hosting: 'email_1_3',
+  ada_overlay_widget: 'ada_overlay',
 };
 
 export function calculatorSelection(findings: Finding[]): string[] {

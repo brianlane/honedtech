@@ -6,6 +6,10 @@
 // actually pays). Where a range exists we take the low end, because an
 // estimate that undershoots survives contact with a real invoice and an
 // estimate that overshoots destroys the pitch.
+//
+// A few lines have no list price at all (card processing, phone lines,
+// maintenance retainers). Those use the low end of published audit-recovery
+// benchmarks, held deliberately below the range so the same rule holds.
 
 export interface CalcOption {
   id: string;
@@ -122,7 +126,21 @@ export const CALCULATOR_SECTIONS: CalcSection[] = [
         label: 'Premium hosting for a simple site',
         monthlyCostUsd: 25,
         monthlyAfterUsd: 2,
-        note: 'A brochure site does not need a premium plan.',
+        note: 'A brochure site does not need a premium plan, and shared-hosting renewals commonly run three to four times the intro rate.',
+      },
+      {
+        id: 'ghost_maintenance',
+        label: 'A monthly website maintenance retainer, but the site never changes',
+        monthlyCostUsd: 75,
+        monthlyAfterUsd: 0,
+        note: 'Real maintenance is documentable: updates applied, backups verified, uptime watched. If nobody can say what happened last month, nothing did.',
+      },
+      {
+        id: 'ada_overlay',
+        label: 'An accessibility overlay or widget subscription',
+        monthlyCostUsd: 49,
+        monthlyAfterUsd: 0,
+        note: 'Overlays do not fix the underlying code, and sites using them still get sued. The FTC fined the largest vendor $1M in 2025 over its compliance claims.',
       },
       {
         id: 'overlapping_marketing',
@@ -140,17 +158,45 @@ export const CALCULATOR_SECTIONS: CalcSection[] = [
       },
       {
         id: 'unused_saas',
-        label: 'Software seats or licenses nobody uses',
+        label: 'Seats or licenses for people who are gone',
         monthlyCostUsd: 25,
         monthlyAfterUsd: 0,
-        note: 'Staff who left, trials that converted, tools bought for one project.',
+        note: 'Per-seat billing for staff who left, or for a team that never grew into the seats you bought.',
+      },
+      {
+        id: 'zombie_trials',
+        label: 'Whole tools nobody has opened in months',
+        monthlyCostUsd: 20,
+        monthlyAfterUsd: 0,
+        note: 'Trials that quietly converted and tools bought for one project. Studies put unused software at a quarter of small-business spend.',
+      },
+      {
+        id: 'processing_fees',
+        label: 'Card processing you have never re-quoted',
+        monthlyCostUsd: 100,
+        monthlyAfterUsd: 40,
+        note: 'PCI, statement, and "regulatory recovery" line items plus tier downgrades. Statement reviews commonly recover $1,200 to $3,500 a year; this counts a fraction of that.',
+      },
+      {
+        id: 'dead_phone_lines',
+        label: 'Phone or fax lines nobody uses',
+        monthlyCostUsd: 45,
+        monthlyAfterUsd: 0,
+        note: 'Fax lines, old direct dials, and numbers for staff who left. Telecom reviews typically recover 10 to 30 percent of the bill.',
       },
       {
         id: 'registrar_upsells',
         label: 'Registrar add-ons (SSL, privacy, site backup, email upsells)',
         monthlyCostUsd: 15,
         monthlyAfterUsd: 0,
-        note: 'SSL and privacy are free at a modern registrar.',
+        note: 'SSL and privacy are free at a modern registrar, and most of these arrive pre-checked at checkout.',
+      },
+      {
+        id: 'unused_domains',
+        label: 'Domains that renew every year and point nowhere',
+        monthlyCostUsd: 8,
+        monthlyAfterUsd: 0,
+        note: 'Variant and campaign domains renewing near $20 each when at-cost registration is about $10, and the ones you never use cost nothing to drop.',
       },
       {
         id: 'duplicate_storage',

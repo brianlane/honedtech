@@ -35,6 +35,9 @@ export type FindingCode =
   | 'paid_email_hosting'
   | 'missing_email_auth'
   | 'page_builder_site'
+  | 'ada_overlay_widget'
+  | 'stale_site'
+  | 'widget_overlap'
   | 'heavy_page'
   | 'no_https_redirect';
 
