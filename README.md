@@ -30,6 +30,39 @@ wrangler auto-loads `.env`, and the `CLOUDFLARE_API_TOKEN` there lacks Email
 Routing scope, so prefix these commands with
 `env -u CLOUDFLARE_API_TOKEN` and `--env-file /dev/null` to use your OAuth
 login instead.
+
+### Sending as a human (outreach)
+
+Inbound and outbound are deliberately different systems:
+
+- **Inbound** is Cloudflare Email Routing, which forwards to the verified
+  inbox. It has no SMTP server, so it cannot send.
+- **Outbound** for anything a person signs is Resend, used as the SMTP server
+  behind Gmail's "Send mail as". Gmail stays the interface.
+
+Do not point Gmail's send-as at `smtp.gmail.com`. It works, but Google signs
+DKIM as `gmail.com` and keeps a `gmail.com` Return-Path, so `honedtech.com`
+gets neither aligned SPF nor aligned DKIM. DMARC then fails, some clients
+append a visible "via gmail.com" tag, and cold mail is likelier to land in
+spam. Resend signs as `honedtech.com`, which is the entire point.
+
+Gmail settings: server `smtp.resend.com`, port `587`, username `resend`,
+password is a Resend API key.
+
+Keep honedtech in its **own Resend account**, separate from other projects.
+Transactional providers prohibit unsolicited email, so if outreach ever draws
+a complaint the suspension should not reach anything else.
+
+Verify the DNS side any time, and always before sending from a new address:
+
+```bash
+npm run email:check                  # honedtech.com
+npm run email:check -- knownapex.com # any domain
+```
+
+It checks inbound MX, apex SPF, the Resend DKIM key, the Return-Path SPF and
+bounce MX on the `send` subdomain, and the DMARC policy, then exits non-zero
+if mail sent as that domain would fail alignment.
 - **Cloudflare Turnstile** (optional, config-gated) - bot protection on the
   contact form, on top of the honeypot field
 - **Cloudflare Web Analytics** (optional, config-gated) - privacy-first beacon

@@ -49,7 +49,9 @@ pipeline. Two hundred generic ones gets your domain burned.
 
 ## Outreach rules (protect the domain and stay legal)
 
-- **Never bulk-send.** Gmail send-as `brian@honedtech.com`, 10 to 25/day.
+- **Never bulk-send.** Gmail send-as `brian@honedtech.com`, 10 to 25/day. That
+  alias must send through Resend SMTP, not Gmail's own relay, or the mail
+  fails DMARC alignment for honedtech.com. Confirm with `npm run email:check`.
 - **Every finding must be real.** The scripts only report what they detect.
   If a finding looks wrong when you review the draft, delete that line. One
   false claim costs more than ten sends gain.
