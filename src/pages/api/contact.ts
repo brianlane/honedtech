@@ -6,7 +6,7 @@ export const prerender = false;
 
 // Must be a verified Email Routing destination address (free-plan sends
 // are only allowed to verified destinations).
-const LEAD_TO = 'brianlane2@gmail.com';
+const LEAD_TO = 'honedtechcontact@gmail.com';
 const LEAD_FROM = { email: 'leads@honedtech.com', name: 'Honed Tech Website' };
 
 function escapeHtml(value: string): string {
