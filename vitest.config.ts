@@ -23,6 +23,7 @@ export default defineConfig({
         'src/lib/calculator.ts',
         'src/lib/turnstile.ts',
         'src/lib/internal.ts',
+        'src/lib/email-auth.ts',
       ],
       thresholds: {
         statements: 100,

@@ -11,6 +11,7 @@
     "types": "wrangler types",
     "check": "wrangler types && astro check",
     "test": "vitest run --coverage",
+    "email:check": "tsx scripts/email-check.ts",
     "prospect:discover": "tsx scripts/prospect-discover.ts",
     "prospect:audit": "tsx scripts/prospect-audit.ts",
     "prospect:compose": "tsx scripts/prospect-compose.ts",
