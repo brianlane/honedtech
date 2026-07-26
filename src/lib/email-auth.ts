@@ -30,6 +30,13 @@ export interface CheckResult {
   detail: string;
 }
 
+// Matched with escaped-dot regex rather than string .includes on a
+// hostname-shaped literal: these are content fingerprints on DNS records, not
+// URL authorization, and the regex form says so.
+const CLOUDFLARE_MX = /mx\.cloudflare\.net/;
+const SES_INCLUDE = /amazonses\.com/;
+const BOUNCE_HOST = /feedback-smtp/;
+
 function findSpf(records: string[]): string | undefined {
   return records.find((r) => r.toLowerCase().includes('v=spf1'));
 }
@@ -56,7 +63,7 @@ export function checkEmailAuth(domain: string, snap: DnsSnapshot): CheckResult[]
   const results: CheckResult[] = [];
 
   // Inbound: Cloudflare Email Routing needs the apex MX pointing at it.
-  const cloudflareMx = snap.rootMx.filter((mx) => mx.includes('mx.cloudflare.net'));
+  const cloudflareMx = snap.rootMx.filter((mx) => CLOUDFLARE_MX.test(mx));
   results.push({
     id: 'inbound_mx',
     label: 'Inbound routing (Cloudflare MX on the apex)',
@@ -90,7 +97,7 @@ export function checkEmailAuth(domain: string, snap: DnsSnapshot): CheckResult[]
   });
 
   const sendSpf = findSpf(snap.sendTxt);
-  const sendSpfOk = Boolean(sendSpf && sendSpf.includes('amazonses.com'));
+  const sendSpfOk = Boolean(sendSpf && SES_INCLUDE.test(sendSpf));
   results.push({
     id: 'send_spf',
     label: `Return-Path SPF (send.${domain})`,
@@ -102,7 +109,7 @@ export function checkEmailAuth(domain: string, snap: DnsSnapshot): CheckResult[]
       : 'Missing. Resend needs this on the send subdomain',
   });
 
-  const sendMxOk = snap.sendMx.some((mx) => mx.includes('feedback-smtp'));
+  const sendMxOk = snap.sendMx.some((mx) => BOUNCE_HOST.test(mx));
   results.push({
     id: 'send_mx',
     label: `Bounce feedback MX (send.${domain})`,
