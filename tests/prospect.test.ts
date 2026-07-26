@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   detectEmailProvider,
   detectPlatform,
+  detectWidgetVendors,
+  hasAccessibilityOverlay,
   hasNoStorefront,
+  latestCopyrightYear,
   missingEmailAuth,
 } from '../src/lib/prospect/detect';
 import { extractContactEmail } from '../src/lib/prospect/contact';
@@ -109,6 +112,55 @@ describe('missingEmailAuth', () => {
   });
 });
 
+describe('hasAccessibilityOverlay', () => {
+  it('detects the major overlay vendors', () => {
+    expect(
+      hasAccessibilityOverlay({
+        domain: 'x',
+        html: '<script src="https://acsbapp.com/apps/app/dist/js/app.js">',
+      }),
+    ).toBe(true);
+    expect(
+      hasAccessibilityOverlay({ domain: 'x', html: '<script src="//cdn.userway.org/widget.js">' }),
+    ).toBe(true);
+  });
+  it('is false for a page with no overlay', () => {
+    expect(hasAccessibilityOverlay({ domain: 'x', html: '<p>Welcome</p>' })).toBe(false);
+  });
+});
+
+describe('detectWidgetVendors', () => {
+  it('lists every bolt-on widget it finds, in a stable order', () => {
+    const html = 'assets.calendly.com/x js.hs-scripts.com/1.js embed.tawk.to/2';
+    expect(detectWidgetVendors({ domain: 'x', html })).toEqual([
+      'Calendly',
+      'Tawk',
+      'HubSpot',
+    ]);
+  });
+  it('returns nothing when the page loads none of them', () => {
+    expect(detectWidgetVendors({ domain: 'x' })).toEqual([]);
+  });
+});
+
+describe('latestCopyrightYear', () => {
+  it('reads a copyright line', () => {
+    expect(latestCopyrightYear({ domain: 'x', html: '<p>&copy; 2021 Acme HVAC</p>' })).toBe(2021);
+  });
+  it('takes the end of a year range', () => {
+    expect(latestCopyrightYear({ domain: 'x', html: 'Copyright 2015-2019 Acme' })).toBe(2019);
+  });
+  it('ignores digits that are not tied to a copyright marker', () => {
+    expect(latestCopyrightYear({ domain: 'x', html: 'Call 6025551212, serving since 1998' })).toBeNull();
+  });
+  it('drops an implausible year', () => {
+    expect(latestCopyrightYear({ domain: 'x', html: '&copy; 1889 Acme' })).toBeNull();
+  });
+  it('returns null when there is no html', () => {
+    expect(latestCopyrightYear({ domain: 'x' })).toBeNull();
+  });
+});
+
 describe('extractContactEmail', () => {
   it('returns null with empty html', () => {
     expect(extractContactEmail('', 'acme.com')).toBeNull();
@@ -172,6 +224,55 @@ describe('buildFindings + totalMonthlyWaste', () => {
     expect(buildFindings(probe).some((f) => f.code === 'missing_email_auth')).toBe(false);
   });
 
+  it('prices an accessibility overlay as a dollar finding', () => {
+    const findings = buildFindings({
+      domain: 'x',
+      html: '<script src="//cdn.userway.org/widget.js">',
+    });
+    const overlay = findings.find((f) => f.code === 'ada_overlay_widget');
+    expect(overlay?.monthlyWasteUsd).toBe(49);
+    expect(overlay?.headline).toContain('FTC');
+  });
+
+  it('flags a copyright year two or more years behind the clock', () => {
+    const probe: DomainProbe = { domain: 'x', html: '&copy; 2022 Acme' };
+    const stale = buildFindings(probe, new Date('2026-07-26T00:00:00Z')).find(
+      (f) => f.code === 'stale_site',
+    );
+    expect(stale?.headline).toContain('2022');
+  });
+
+  it('leaves a copyright year only one year behind alone', () => {
+    const probe: DomainProbe = { domain: 'x', html: '&copy; 2022 Acme' };
+    expect(
+      buildFindings(probe, new Date('2023-01-01T00:00:00Z')).some(
+        (f) => f.code === 'stale_site',
+      ),
+    ).toBe(false);
+  });
+
+  it('names the overlapping widgets, reading naturally for two or more', () => {
+    const two = buildFindings({ domain: 'x', html: 'calendly.com tawk.to' });
+    expect(two.find((f) => f.code === 'widget_overlap')?.headline).toContain(
+      'Calendly and Tawk',
+    );
+    const three = buildFindings({
+      domain: 'x',
+      html: 'calendly.com tawk.to chimpstatic.com',
+    });
+    expect(three.find((f) => f.code === 'widget_overlap')?.headline).toContain(
+      'Calendly, Tawk, and Mailchimp',
+    );
+  });
+
+  it('does not call a single widget an overlap', () => {
+    expect(
+      buildFindings({ domain: 'x', html: 'calendly.com' }).some(
+        (f) => f.code === 'widget_overlap',
+      ),
+    ).toBe(false);
+  });
+
   it('flags heavy pages by bytes or by request count', () => {
     expect(buildFindings({ domain: 'x', htmlBytes: 3_000_000 }).some((f) => f.code === 'heavy_page')).toBe(true);
     expect(buildFindings({ domain: 'x', requestCount: 120 }).some((f) => f.code === 'heavy_page')).toBe(true);
@@ -218,6 +319,14 @@ describe('composeEmail + url helpers', () => {
       mxRecords: ['aspmx.l.google.com'],
     });
     expect(calculatorSelection(findings)).toEqual(['shopify_no_store', 'email_1_3']);
+  });
+
+  it('maps a detected overlay onto its calculator option', () => {
+    const findings = buildFindings({
+      domain: 'acme.com',
+      html: '<script src="//cdn.userway.org/widget.js">',
+    });
+    expect(calculatorSelection(findings)).toEqual(['ada_overlay']);
   });
 
   it('builds a prefilled calculator link with UTM tags', () => {

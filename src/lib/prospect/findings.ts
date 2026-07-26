@@ -1,7 +1,10 @@
 import {
   detectEmailProvider,
   detectPlatform,
+  detectWidgetVendors,
+  hasAccessibilityOverlay,
   hasNoStorefront,
+  latestCopyrightYear,
   missingEmailAuth,
 } from './detect';
 import type { DomainProbe, Finding, Platform } from './types';
@@ -12,6 +15,7 @@ const WASTE = {
   shopifyNoStore: 39, // Shopify Basic
   pageBuilder: 23, // typical Wix/Squarespace/GoDaddy plan
   paidEmailPerMailbox: 7, // Google Workspace / M365 entry tier, per mailbox
+  accessibilityOverlay: 49, // entry plan at the major overlay vendors
 };
 
 const PAGE_BUILDERS: Platform[] = ['wix', 'squarespace', 'godaddy', 'weebly'];
@@ -30,9 +34,22 @@ const PLATFORM_LABEL: Record<Platform, string> = {
 const HEAVY_BYTES = 2_000_000;
 const HEAVY_REQUESTS = 75;
 
+// How far behind the copyright year has to fall before the site reads as
+// abandoned. One year is noise in January; two is a pattern.
+const STALE_YEARS = 2;
+
+// Joins vendor names for prose. Only ever called with two or more.
+function andList(items: string[]): string {
+  if (items.length === 2) {
+    return `${items[0]} and ${items[1]}`;
+  }
+  return `${items.slice(0, -1).join(', ')}, and ${items[items.length - 1]}`;
+}
+
 // Turns a raw probe into an ordered list of prospect-facing findings. Pure
-// and deterministic: identical input always yields identical output.
-export function buildFindings(probe: DomainProbe): Finding[] {
+// and deterministic: identical input and clock always yield identical output.
+// `now` is injectable so the staleness check is testable.
+export function buildFindings(probe: DomainProbe, now: Date = new Date()): Finding[] {
   const findings: Finding[] = [];
   const platform = detectPlatform(probe);
 
@@ -64,6 +81,36 @@ export function buildFindings(probe: DomainProbe): Finding[] {
       headline: `Your email is on ${label}. If you use it mainly to send and receive mail, free email routing on your own domain often covers the same need.`,
       monthlyWasteUsd: WASTE.paidEmailPerMailbox,
       severity: 60,
+    });
+  }
+
+  if (hasAccessibilityOverlay(probe)) {
+    findings.push({
+      code: 'ada_overlay_widget',
+      headline:
+        'Your site runs an accessibility overlay widget. It bills every month, it does not fix the underlying code, and the FTC fined the largest vendor $1M in 2025 over exactly that claim.',
+      monthlyWasteUsd: WASTE.accessibilityOverlay,
+      severity: 80,
+    });
+  }
+
+  const copyrightYear = latestCopyrightYear(probe);
+  if (copyrightYear !== null && now.getFullYear() - copyrightYear >= STALE_YEARS) {
+    findings.push({
+      code: 'stale_site',
+      headline: `Your site still shows a copyright year of ${copyrightYear}, which tells visitors nobody is minding it and raises the question of what any maintenance retainer is buying.`,
+      monthlyWasteUsd: 0,
+      severity: 50,
+    });
+  }
+
+  const widgets = detectWidgetVendors(probe);
+  if (widgets.length >= 2) {
+    findings.push({
+      code: 'widget_overlap',
+      headline: `You are running ${andList(widgets)} on the same site. Each carries its own subscription, and one of them usually covers what the others do.`,
+      monthlyWasteUsd: 0,
+      severity: 45,
     });
   }
 

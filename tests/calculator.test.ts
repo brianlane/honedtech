@@ -33,6 +33,31 @@ describe('calculator model', () => {
     expect(isKnownOption('shopify_no_store')).toBe(true);
     expect(isKnownOption('nope')).toBe(false);
   });
+
+  it('explains every option that claims a saving', () => {
+    for (const section of CALCULATOR_SECTIONS) {
+      for (const option of section.options) {
+        if (option.monthlyCostUsd > option.monthlyAfterUsd) {
+          expect(option.note).toBeTruthy();
+        }
+      }
+    }
+  });
+
+  it('prices the researched waste categories', () => {
+    expect(estimateMonthlyWaste(['ghost_maintenance'])).toBe(75);
+    expect(estimateMonthlyWaste(['ada_overlay'])).toBe(49);
+    expect(estimateMonthlyWaste(['dead_phone_lines'])).toBe(45);
+    expect(estimateMonthlyWaste(['zombie_trials'])).toBe(20);
+    expect(estimateMonthlyWaste(['unused_domains'])).toBe(8);
+  });
+
+  it('treats most of a processing bill as a real cost, not waste', () => {
+    // The fee itself is unavoidable; only the padding is recoverable, and we
+    // claim well under the $1,200 to $3,500 a year statement audits report.
+    expect(currentMonthlySpend(['processing_fees'])).toBe(100);
+    expect(estimateAnnualWaste(['processing_fees'])).toBe(720);
+  });
 });
 
 describe('breakdown and totals', () => {
@@ -96,10 +121,10 @@ describe('auditPaybackMonths', () => {
     expect(auditPaybackMonths(ids)).toBe(3);
   });
 
-  it('cannot pay back instantly, since the model caps below the audit fee', () => {
-    // Sanity check on the whole model: selecting the worst case in every
-    // section still lands under the fee, so payback is always 2+ months and
-    // the tool can never overpromise.
+  it('never reports a payback shorter than one whole month', () => {
+    // Sanity check on the whole model. With every category selected the total
+    // now clears the audit fee, which is the pitch, but payback is reported in
+    // whole months and never rounds down to an instant return.
     const everything = CALCULATOR_SECTIONS.flatMap((s) =>
       s.mode === 'multi'
         ? s.options.map((o) => o.id)
@@ -112,8 +137,12 @@ describe('auditPaybackMonths', () => {
             ).id,
           ],
     );
-    expect(estimateMonthlyWaste(everything)).toBeLessThan(AUDIT_PRICE_USD);
-    expect(auditPaybackMonths(everything)).toBeGreaterThan(1);
+    expect(estimateMonthlyWaste(everything)).toBeGreaterThan(AUDIT_PRICE_USD);
+    expect(auditPaybackMonths(everything)).toBe(1);
+    // And the model never claims back more than the visitor is spending.
+    expect(estimateMonthlyWaste(everything)).toBeLessThanOrEqual(
+      currentMonthlySpend(everything),
+    );
   });
 });
 
