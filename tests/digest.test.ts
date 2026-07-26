@@ -170,6 +170,42 @@ describe('POST /api/internal/digest', () => {
     expect(sent.text).toContain('unknown');
   });
 
+  it('renders an enterprise research brief above the draft', async () => {
+    const res = await POST(
+      makeContext(
+        {
+          drafts: [
+            {
+              ...DRAFT,
+              to: '',
+              brief: ['Acme (acme.com, Tempe, AZ)', 'layoff [$3,780/mo]: WARN filing'],
+            },
+          ],
+        },
+        'top-secret',
+      ),
+    );
+    expect(res.status).toBe(200);
+    const sent = vi.mocked(env.EMAIL.send).mock.calls[0][0] as Record<string, unknown>;
+    expect(sent.text).toContain('Research brief:');
+    expect(sent.text).toContain('  - layoff [$3,780/mo]: WARN filing');
+    expect(sent.html).toContain('<strong>Research brief</strong>');
+    expect(sent.html).toContain('<li>Acme (acme.com, Tempe, AZ)</li>');
+  });
+
+  it('omits the brief section for drafts without one, and drops junk lines', async () => {
+    const res = await POST(
+      makeContext(
+        { drafts: [{ ...DRAFT, brief: ['', 42, null] }] },
+        'top-secret',
+      ),
+    );
+    expect(res.status).toBe(200);
+    const sent = vi.mocked(env.EMAIL.send).mock.calls[0][0] as Record<string, unknown>;
+    expect(sent.text).not.toContain('Research brief');
+    expect(sent.html).not.toContain('Research brief');
+  });
+
   it('returns 500 when the email send fails', async () => {
     env.EMAIL.send = vi.fn(async () => {
       throw new Error('send failed');

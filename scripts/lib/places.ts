@@ -4,10 +4,12 @@ import {
   buildSearchPlan,
   dayIndex,
   filterNewProspects,
+  isExcludedHost,
   placeToProspect,
   type PlaceResult,
   type SearchQuery,
 } from '../../src/lib/prospect/discover';
+import { normalizeDomain } from '../../src/lib/prospect/ledger';
 import type { Prospect } from '../../src/lib/prospect/compose';
 
 const SEARCH_URL = 'https://places.googleapis.com/v1/places:searchText';
@@ -101,4 +103,41 @@ export async function discoverProspects(
   }
 
   return collected.slice(0, limit);
+}
+
+// WARN filings name an employer but carry no website, so the Enterprise track
+// resolves the name to a domain through the Places client we already pay for.
+// One search per company, and null when nothing plausible comes back: a wrong
+// domain is far worse than a skipped account, since every later signal would
+// be attributed to a stranger.
+export async function resolveCompanyDomain(
+  apiKey: string,
+  company: string,
+  city?: string,
+): Promise<string | null> {
+  const textQuery = city ? `${company} ${city}` : company;
+  let places: PlaceResult[];
+  try {
+    places = await searchOnce(
+      apiKey,
+      { textQuery, vertical: 'enterprise', city: city ?? '' },
+      3,
+    );
+  } catch (err) {
+    console.log(`  ! domain lookup failed for ${company}: ${(err as Error).message}`);
+    return null;
+  }
+
+  for (const place of places) {
+    const website = place.websiteUri?.trim();
+    if (!website) {
+      continue;
+    }
+    const domain = normalizeDomain(website);
+    // Platform-hosted pages belong to the platform, not the employer.
+    if (domain && !isExcludedHost(domain)) {
+      return domain;
+    }
+  }
+  return null;
 }

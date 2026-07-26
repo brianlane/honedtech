@@ -16,6 +16,7 @@
     "prospect:audit": "tsx scripts/prospect-audit.ts",
     "prospect:compose": "tsx scripts/prospect-compose.ts",
     "prospect:pipeline": "tsx scripts/prospect-pipeline.ts",
+    "enterprise:pipeline": "tsx scripts/enterprise-pipeline.ts",
     "prospect:optout": "tsx scripts/prospect-optout.ts",
     "prospect:sent": "tsx scripts/prospect-sent.ts",
     "prospect:status": "tsx scripts/prospect-status.ts",

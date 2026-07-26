@@ -392,6 +392,9 @@ const faqSchema = {
         <a href="#contact" class="btn btn-primary" data-audit="enterprise">
           Book an Enterprise Audit
         </a>
+        <a href="/enterprise" class="btn btn-ghost">
+          Estimate your seat waste
+        </a>
       </div>
     </div>
   </section>
@@ -636,15 +639,19 @@ const faqSchema = {
         }
       }
 
-      // Prefill from the savings calculator, which stashes a message in
-      // sessionStorage before sending the visitor here.
+      // Prefill from either estimator, which stashes a message in
+      // sessionStorage before sending the visitor here. The enterprise key is
+      // checked first and keeps the enterprise copy, since that visitor is
+      // answering a different question than the savings calculator asks.
+      const entMsg = sessionStorage.getItem('honed_enterprise_msg');
       const calcMsg = sessionStorage.getItem('honed_calc_msg');
-      if (calcMsg) {
+      if (entMsg || calcMsg) {
+        sessionStorage.removeItem('honed_enterprise_msg');
         sessionStorage.removeItem('honed_calc_msg');
-        setMode('calculator');
+        setMode(entMsg ? 'enterprise' : 'calculator');
         const message = el('message');
         if (message instanceof HTMLTextAreaElement) {
-          message.value = calcMsg;
+          message.value = entMsg || calcMsg || '';
         }
       }
     })();

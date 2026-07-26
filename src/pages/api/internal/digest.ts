@@ -21,6 +21,11 @@ interface Draft {
   subject?: string;
   body?: string;
   findingCount?: number;
+  // Enterprise drafts carry a research brief: the evidence behind each signal
+  // and a reminder to find the named executive. Kept out of the draft body on
+  // purpose, since pasting filing URLs into a cold email reads as surveillance
+  // rather than homework.
+  brief?: string[];
 }
 
 // A draft that survived validation: subject and body are guaranteed present.
@@ -63,13 +68,18 @@ export const POST: APIRoute = async ({ request }) => {
     return new Response('Nothing to send', { status: 400 });
   }
 
+  const briefLines = (d: Draft): string[] =>
+    (d.brief ?? []).filter((line) => typeof line === 'string' && line.length > 0);
+
   const textParts = drafts.map((d, i) => {
     const to = d.to || 'NO EMAIL FOUND, look up manually';
+    const brief = briefLines(d);
     return [
       `--- Draft ${i + 1} of ${drafts.length}: ${d.business ?? d.domain ?? 'unknown'} ---`,
       `Domain: ${d.domain ?? 'unknown'}`,
       `To: ${to}`,
       `Subject: ${d.subject}`,
+      ...(brief.length ? ['', 'Research brief:', ...brief.map((l) => `  - ${l}`)] : []),
       '',
       d.body,
       '',
@@ -78,11 +88,17 @@ export const POST: APIRoute = async ({ request }) => {
 
   const htmlParts = drafts.map((d, i) => {
     const to = d.to || 'NO EMAIL FOUND, look up manually';
+    const brief = briefLines(d);
+    const briefHtml = brief.length
+      ? `<p><strong>Research brief</strong></p><ul>${brief
+          .map((line) => `<li>${escapeHtml(line)}</li>`)
+          .join('')}</ul>`
+      : '';
     return `<h3>Draft ${i + 1} of ${drafts.length}: ${escapeHtml(
       d.business ?? d.domain ?? 'unknown',
     )}</h3><p><strong>To:</strong> ${escapeHtml(to)}<br><strong>Subject:</strong> ${escapeHtml(
       d.subject,
-    )}</p><pre style="white-space:pre-wrap;font-family:inherit;background:#f4f6f8;padding:12px;border-radius:6px">${escapeHtml(
+    )}</p>${briefHtml}<pre style="white-space:pre-wrap;font-family:inherit;background:#f4f6f8;padding:12px;border-radius:6px">${escapeHtml(
       d.body,
     )}</pre>`;
   });

@@ -1,0 +1,437 @@
+---
+import Base from '../layouts/Base.astro';
+import {
+  ENTERPRISE_AUDIT_PRICE_USD,
+  SEAT_TOOLS,
+} from '../lib/enterprise/seats';
+
+const auditPrice = `$${ENTERPRISE_AUDIT_PRICE_USD.toLocaleString('en-US')}`;
+
+const title = 'Enterprise Software Audits | Honed Tech';
+const description =
+  'Seat-by-seat license utilization, duplicate tooling, and software adoption assessments for companies above 50 staff. Flat-rate Enterprise audits from $2,499.';
+
+const serviceSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Service',
+  name: 'Enterprise software and license audit',
+  provider: {
+    '@type': 'ProfessionalService',
+    name: 'Honed Tech',
+    url: 'https://honedtech.com',
+  },
+  areaServed: 'United States',
+  description,
+  offers: {
+    '@type': 'Offer',
+    price: String(ENTERPRISE_AUDIT_PRICE_USD),
+    priceCurrency: 'USD',
+  },
+};
+
+const faq = [
+  {
+    q: 'How is this different from the $299 audit?',
+    a: 'Scale and scope. The Snapshot audit reviews one small business stack. The Enterprise audit covers multi-team license utilization, seat-by-seat usage, duplicate tooling across departments, and software adoption, and it ends in an executive report you can hand to a board.',
+  },
+  {
+    q: 'Do you need access to our systems?',
+    a: 'No. We work from billing records, license inventories, and admin console exports that your team already has. We never need access to customer data, and we can sign an NDA before anything is shared.',
+  },
+  {
+    q: 'We just went through a reduction. Is now the right time?',
+    a: 'It is usually the best time. Per-seat licenses rarely shrink with headcount, and the seats nobody reclaimed keep billing every month until someone goes looking for them.',
+  },
+  {
+    q: 'What if the tools are locked into annual contracts?',
+    a: 'We flag what is genuinely locked and when each term ends, then focus the savings on what is cancellable now and build a plan for the renewal dates. Knowing the dates ahead of time is itself worth money.',
+  },
+  {
+    q: 'How long does an Enterprise audit take?',
+    a: 'Typically two to three weeks depending on how many systems are in scope, with a working session partway through so there are no surprises in the final report.',
+  },
+];
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faq.map((item) => ({
+    '@type': 'Question',
+    name: item.q,
+    acceptedAnswer: { '@type': 'Answer', text: item.a },
+  })),
+};
+
+const triggers = [
+  {
+    num: '01 · After a reduction',
+    title: 'Headcount fell, licenses did not',
+    body: 'Offboarding reclaims the laptop and the badge. It rarely reclaims the Salesforce seat, the BI viewer license, or the fourteen smaller per-seat agents nobody keeps an inventory of.',
+  },
+  {
+    num: '02 · After a rollout',
+    title: 'You bought it, nobody uses it',
+    body: 'Software gets purchased faster than teams can absorb it. No training, no feedback loop, and staff quietly fall back to spreadsheets while every seat keeps billing.',
+  },
+  {
+    num: '03 · After a merger',
+    title: 'Two of everything',
+    body: 'Two CRMs, two BI tools, two service desks. Both get renewed because nobody owns the decision to pick one, and the duplicate spend compounds every year it is deferred.',
+  },
+];
+---
+
+<Base title={title} description={description}>
+  <script
+    is:inline
+    slot="head"
+    type="application/ld+json"
+    set:html={JSON.stringify(serviceSchema)}
+  />
+  <script
+    is:inline
+    slot="head"
+    type="application/ld+json"
+    set:html={JSON.stringify(faqSchema)}
+  />
+
+  <section class="hero calc-hero">
+    <div class="container">
+      <span class="eyebrow">Enterprise · 50+ staff</span>
+      <h1>
+        You are paying for seats nobody sits in.{' '}
+        <span class="accent">We find them, seat by seat.</span>
+      </h1>
+      <p class="sub">
+        Industry studies put unused and underused licenses at a quarter to a
+        half of software spend. At your headcount that is not a rounding error,
+        it is a hire. An Enterprise audit is a flat {auditPrice} and ends in a
+        report your CFO can act on.
+      </p>
+      <div class="cta-row">
+        <a href="#estimate" class="btn btn-primary">Estimate what you can reclaim</a>
+        <a href="/#contact" class="btn btn-ghost" data-audit="enterprise">
+          Book an Enterprise Audit
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-alt">
+    <div class="container">
+      <p class="kicker">When this pays for itself</p>
+      <h2>Three moments when the waste is guaranteed.</h2>
+      <p class="section-lead">
+        Software spend does not drift upward evenly. It jumps at specific
+        events, and then nobody revisits it.
+      </p>
+      <div class="grid grid-3 steps">
+        {triggers.map((t) => (
+          <div class="card step">
+            <p class="num">{t.num}</p>
+            <h3>{t.title}</h3>
+            <p>{t.body}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section id="estimate">
+    <div class="container">
+      <p class="kicker">Seat Reclaim Estimate</p>
+      <h2>What are the empty seats costing you?</h2>
+      <p class="section-lead">
+        Enter the seats you know are no longer used and the tools they carried.
+        Priced at published list rates, always at the low end.
+      </p>
+
+      <div class="calc-layout">
+        <form id="calc" class="calc-form">
+          <fieldset class="calc-section">
+            <legend>Seats no longer in use</legend>
+            <p class="calc-help">
+              People who left, roles never backfilled, or seats bought for a
+              team that never grew.
+            </p>
+            <label class="calc-number">
+              <span>Number of seats</span>
+              <input
+                type="number"
+                id="seats"
+                name="seats"
+                min="0"
+                max="10000"
+                step="1"
+                value="0"
+                inputmode="numeric"
+              />
+            </label>
+          </fieldset>
+
+          <fieldset class="calc-section">
+            <legend>What those seats were licensed for</legend>
+            <p class="calc-help">Check every tool a typical seat carried.</p>
+            <div class="calc-options">
+              {SEAT_TOOLS.map((t) => (
+                <label class="calc-option">
+                  <input type="checkbox" name="tools" value={t.id} />
+                  <span class="calc-option-body">
+                    <span class="calc-option-label">
+                      {t.label}
+                      <span class="calc-price">${t.perSeatUsd}/seat/mo</span>
+                    </span>
+                    <span class="calc-note-inline">{t.note}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
+          <fieldset class="calc-section">
+            <legend>Duplicated functions</legend>
+            <p class="calc-help">
+              How many jobs are covered by more than one tool? Two CRMs, two BI
+              platforms, two service desks. The median company has several.
+            </p>
+            <label class="calc-number">
+              <span>Number of duplicated functions</span>
+              <input
+                type="number"
+                id="dupes"
+                name="dupes"
+                min="0"
+                max="20"
+                step="1"
+                value="0"
+                inputmode="numeric"
+              />
+            </label>
+          </fieldset>
+        </form>
+
+        <aside class="calc-result" id="calc-result" aria-live="polite">
+          <p class="calc-result-label">Estimated recoverable spend</p>
+          <p class="calc-figure"><span id="calc-monthly">$0</span> <small>/month</small></p>
+
+          <div class="calc-metrics">
+            <div>
+              <span class="calc-metric-value" id="calc-annual">$0</span>
+              <span class="calc-metric-label">per year</span>
+            </div>
+            <div>
+              <span class="calc-metric-value" id="calc-three-year">$0</span>
+              <span class="calc-metric-label">over 3 years</span>
+            </div>
+            <div>
+              <span class="calc-metric-value" id="calc-per-seat">$0</span>
+              <span class="calc-metric-label">per seat/mo</span>
+            </div>
+            <div>
+              <span class="calc-metric-value" id="calc-payback">&ndash;</span>
+              <span class="calc-metric-label">audit payback</span>
+            </div>
+          </div>
+
+          <p class="calc-narrative" id="calc-narrative">
+            Enter your seat count and the estimate appears here.
+          </p>
+
+          <table class="calc-table" id="calc-table" hidden>
+            <thead>
+              <tr>
+                <th scope="col">Licensed for</th>
+                <th scope="col">Per seat</th>
+                <th scope="col">Per month</th>
+              </tr>
+            </thead>
+            <tbody id="calc-table-body"></tbody>
+          </table>
+
+          <div class="calc-actions">
+            <a href="/#contact" id="calc-cta" class="btn btn-primary" data-audit="enterprise">
+              Book an Enterprise Audit
+            </a>
+            <button type="button" class="btn btn-ghost" id="calc-share">
+              Copy shareable link
+            </button>
+          </div>
+
+          <p class="calc-note">
+            This covers per-seat licensing only, at published list rates and
+            always at the low end. A real audit reviews contracts, tiers,
+            renewal dates, and actual usage telemetry, which is why it
+            consistently finds more than this.
+          </p>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-alt">
+    <div class="container">
+      <p class="kicker">FAQ</p>
+      <h2>Straight answers before you book.</h2>
+      <div class="faq-list">
+        {faq.map((item) => (
+          <details class="faq-item">
+            <summary>{item.q}</summary>
+            <p>{item.a}</p>
+          </details>
+        ))}
+      </div>
+      <div class="cta-row" style="margin-top: 36px;">
+        <a href="/#contact" class="btn btn-primary" data-audit="enterprise">
+          Book an Enterprise Audit
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <style>
+    .calc-number {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-width: 260px;
+    }
+    .calc-number span {
+      font-size: 0.95rem;
+      opacity: 0.85;
+    }
+    .calc-number input {
+      font: inherit;
+      font-size: 1.25rem;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: rgba(255, 255, 255, 0.04);
+      color: inherit;
+    }
+    .calc-number input:focus-visible {
+      outline: 2px solid var(--accent, #4fd1b0);
+      outline-offset: 2px;
+    }
+  </style>
+
+  <script>
+    import {
+      auditPaybackMonths,
+      buildReclaimNarrative,
+      buildReclaimPrefill,
+      buildSeatBreakdown,
+      decodeReclaim,
+      encodeReclaim,
+      perSeatMonthly,
+      totalAnnualReclaim,
+      totalMonthlyReclaim,
+      totalThreeYearReclaim,
+      type ReclaimInput,
+    } from '../lib/enterprise/seats';
+
+    const form = document.getElementById('calc') as HTMLFormElement;
+    const el = (id: string) => document.getElementById(id) as HTMLElement;
+    const seatsInput = document.getElementById('seats') as HTMLInputElement;
+    const dupesInput = document.getElementById('dupes') as HTMLInputElement;
+    const cta = document.getElementById('calc-cta') as HTMLAnchorElement;
+    const shareBtn = document.getElementById('calc-share') as HTMLButtonElement;
+    const table = document.getElementById('calc-table') as HTMLTableElement;
+    const tableBody = document.getElementById('calc-table-body') as HTMLElement;
+
+    const usd = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`;
+
+    function currentInput(): ReclaimInput {
+      const toolIds = Array.from(
+        form.querySelectorAll<HTMLInputElement>('input[name="tools"]:checked'),
+      ).map((i) => i.value);
+      return {
+        seats: Number.parseInt(seatsInput.value, 10) || 0,
+        duplicateCategories: Number.parseInt(dupesInput.value, 10) || 0,
+        toolIds,
+      };
+    }
+
+    function render() {
+      const input = currentInput();
+      el('calc-monthly').textContent = usd(totalMonthlyReclaim(input));
+      el('calc-annual').textContent = usd(totalAnnualReclaim(input));
+      el('calc-three-year').textContent = usd(totalThreeYearReclaim(input));
+      el('calc-per-seat').textContent = usd(perSeatMonthly(input.toolIds));
+
+      const payback = auditPaybackMonths(input);
+      el('calc-payback').textContent =
+        payback === 0 ? '\u2013' : payback === 1 ? '1 month' : `${payback} months`;
+
+      el('calc-narrative').textContent = buildReclaimNarrative(input);
+
+      const lines = buildSeatBreakdown(input.seats, input.toolIds);
+      tableBody.replaceChildren(
+        ...lines.map((line) => {
+          const row = document.createElement('tr');
+          for (const text of [
+            line.label,
+            usd(line.perSeatUsd),
+            usd(line.monthlyUsd),
+          ]) {
+            const cell = document.createElement('td');
+            cell.textContent = text;
+            // appendChild, not append: the Workers types in scope shadow the
+            // DOM append signature and make it fail the typecheck.
+            row.appendChild(cell);
+          }
+          return row;
+        }),
+      );
+      table.hidden = lines.length === 0;
+
+      // Keep the URL in step so the estimate survives a reload and can be
+      // forwarded to whoever owns the budget.
+      const encoded = encodeReclaim(input);
+      const url = new URL(window.location.href);
+      if (input.seats > 0 || input.toolIds.length > 0 || input.duplicateCategories > 0) {
+        url.searchParams.set('r', encoded);
+      } else {
+        url.searchParams.delete('r');
+      }
+      window.history.replaceState({}, '', url);
+    }
+
+    form.addEventListener('input', render);
+    form.addEventListener('change', render);
+
+    // Carry the itemized estimate to the homepage contact form.
+    cta.addEventListener('click', () => {
+      const message = buildReclaimPrefill(currentInput());
+      if (message) {
+        sessionStorage.setItem('honed_enterprise_msg', message);
+      }
+    });
+
+    shareBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        shareBtn.textContent = 'Link copied';
+      } catch {
+        // Clipboard can be blocked; the URL is already correct in the bar.
+        shareBtn.textContent = 'Copy from the address bar';
+      }
+      setTimeout(() => {
+        shareBtn.textContent = 'Copy shareable link';
+      }, 2500);
+    });
+
+    // Restore state from the URL, which is how outreach emails deep-link an
+    // account straight to its own numbers.
+    const preset = decodeReclaim(new URLSearchParams(location.search).get('r'));
+    seatsInput.value = String(preset.seats);
+    dupesInput.value = String(preset.duplicateCategories);
+    for (const id of preset.toolIds) {
+      const input = form.querySelector<HTMLInputElement>(
+        `input[name="tools"][value="${id}"]`,
+      );
+      if (input) input.checked = true;
+    }
+
+    render();
+  </script>
+</Base>

@@ -20,6 +20,7 @@ export default defineConfig({
       include: [
         'src/pages/api/**/*.ts',
         'src/lib/prospect/**/*.ts',
+        'src/lib/enterprise/**/*.ts',
         'src/lib/calculator.ts',
         'src/lib/turnstile.ts',
         'src/lib/internal.ts',
