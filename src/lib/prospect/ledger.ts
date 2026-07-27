@@ -66,6 +66,10 @@ export interface OutreachLedger {
   followedUpAt: Record<string, string>;
   // domain -> what came back, which closes the loop and stops follow-ups.
   outcomes: Record<string, { status: OutcomeStatus; at: string }>;
+  // domain -> vertical it was discovered under, so outcomes can be compared
+  // per trade. Without this a heavy week in one vertical reads as market
+  // signal when it is only what discovery happened to be searching.
+  verticals: Record<string, string>;
 }
 
 const EMPTY_LEDGER: OutreachLedger = {
@@ -76,6 +80,7 @@ const EMPTY_LEDGER: OutreachLedger = {
   contactedAt: {},
   followedUpAt: {},
   outcomes: {},
+  verticals: {},
 };
 
 export function normalizeEmail(input: string): string {
@@ -92,7 +97,9 @@ function domainArray(value: unknown): string[] {
     .filter((d) => d.length > 0);
 }
 
-function timestampMap(value: unknown): Record<string, string> {
+// domain -> non-empty string, with normalized keys. Used for both the
+// timestamp maps and the vertical map.
+function domainStringMap(value: unknown): Record<string, string> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return {};
   }
@@ -159,9 +166,10 @@ export function parseLedgerResult(text: string): LedgerReadResult {
         contacted: domainArray(raw.contacted),
         contactedEmails: emailArray(raw.contactedEmails),
         optedOut: domainArray(raw.optedOut),
-        contactedAt: timestampMap(raw.contactedAt),
-        followedUpAt: timestampMap(raw.followedUpAt),
+        contactedAt: domainStringMap(raw.contactedAt),
+        followedUpAt: domainStringMap(raw.followedUpAt),
         outcomes: outcomeMap(raw.outcomes),
+        verticals: domainStringMap(raw.verticals),
       },
       corrupt: false,
     };
@@ -219,19 +227,29 @@ export function recordDiscovered(
 
 // Marks domains and addresses as emailed. Both are also marked discovered so
 // the pair stays suppressed even if the discovered list is rebuilt. The first
-// contact timestamp is never overwritten, because follow-up timing keys off
-// the original send, not the most recent bookkeeping.
+// contact timestamp and vertical are never overwritten, because follow-up
+// timing and outcome attribution key off the original send, not the most
+// recent bookkeeping.
 export function recordContacted(
   ledger: OutreachLedger,
   domains: string[],
   emails: string[] = [],
   now: Date = new Date(),
+  verticalByDomain: Record<string, string> = {},
 ): OutreachLedger {
   const contactedAt = { ...ledger.contactedAt };
+  const verticals = { ...ledger.verticals };
   for (const d of domains) {
     const bare = normalizeDomain(d);
-    if (bare && !contactedAt[bare]) {
+    if (!bare) {
+      continue;
+    }
+    if (!contactedAt[bare]) {
       contactedAt[bare] = now.toISOString();
+    }
+    const vertical = verticalByDomain[d] ?? verticalByDomain[bare];
+    if (vertical && !verticals[bare]) {
+      verticals[bare] = vertical;
     }
   }
   return {
@@ -240,6 +258,7 @@ export function recordContacted(
     contactedEmails: addEmails(ledger.contactedEmails, emails),
     discovered: addDomains(ledger.discovered, domains),
     contactedAt,
+    verticals,
   };
 }
 
@@ -303,6 +322,9 @@ export function mergeLedgers(
     contactedAt: mergeTimestamps(base.contactedAt, incoming.contactedAt, 'earliest'),
     followedUpAt: mergeTimestamps(base.followedUpAt, incoming.followedUpAt, 'latest'),
     outcomes: mergeOutcomes(base.outcomes, incoming.outcomes),
+    // First writer wins, same spirit as the earliest contact timestamp: the
+    // vertical a domain was originally discovered under is the true one.
+    verticals: { ...incoming.verticals, ...base.verticals },
   };
 }
 
@@ -420,6 +442,36 @@ export function ledgerStats(ledger: OutreachLedger): LedgerStats {
     optedOut: ledger.optedOut.length,
     replyRate: contacted === 0 ? 0 : Math.round((anyReply / contacted) * 1000) / 10,
   };
+}
+
+export interface VerticalStats {
+  vertical: string;
+  contacted: number;
+  replied: number;
+  booked: number;
+}
+
+// Outcomes grouped by the vertical each domain was discovered under, which is
+// the evidence that separates "this trade responds" from "this trade is what
+// discovery happened to be searching that week". Domains contacted before
+// verticals were tracked group under "(unknown)".
+export function verticalBreakdown(ledger: OutreachLedger): VerticalStats[] {
+  const byVertical = new Map<string, VerticalStats>();
+  for (const domain of ledger.contacted) {
+    const vertical = ledger.verticals[domain] ?? '(unknown)';
+    let entry = byVertical.get(vertical);
+    if (!entry) {
+      entry = { vertical, contacted: 0, replied: 0, booked: 0 };
+      byVertical.set(vertical, entry);
+    }
+    entry.contacted += 1;
+    const status = ledger.outcomes[domain]?.status;
+    if (status === 'replied') entry.replied += 1;
+    if (status === 'booked') entry.booked += 1;
+  }
+  return [...byVertical.values()].sort(
+    (a, b) => b.contacted - a.contacted || a.vertical.localeCompare(b.vertical),
+  );
 }
 
 // Opting out also marks the domain discovered, so it is suppressed even if the

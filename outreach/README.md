@@ -80,6 +80,12 @@ Check the numbers any time:
 npm run prospect:status
 ```
 
+The status includes a per-vertical breakdown (contacted / replied / booked),
+built from the vertical each domain was discovered under. That breakdown, not
+the mix of any one digest, is the evidence for whether a trade deserves more
+attention. Domains contacted before verticals were tracked show as
+`(unknown)`.
+
 ### Weekly status email
 
 A separate job ([status.yml](../.github/workflows/status.yml)) runs Mondays at
@@ -182,8 +188,12 @@ the lowest-friction path we have to a conversation.
 Queries come from `searchTerms` on each entry in
 [../src/data/verticals.ts](../src/data/verticals.ts), crossed with the Phoenix
 metro cities in [../src/lib/prospect/discover.ts](../src/lib/prospect/discover.ts).
-The plan rotates by day so coverage spreads across every trade and city instead
-of exhausting one first.
+The combined list is interleaved round-robin across verticals and the daily
+window advances by a full run, so every digest mixes trades and consecutive
+runs never re-buy the same Places searches. (The first version grouped the
+list by vertical and slid one query per day, which quietly served a single
+trade for weeks at a time: an all-pest-control month is a rotation artifact,
+not a market signal.)
 
 Results are filtered before they ever reach you: no website means nothing to
 audit, permanently closed businesses are dropped, and platform-hosted sites

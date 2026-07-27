@@ -38,6 +38,7 @@ import {
   recordOptedOut,
   recordOutcome,
   serializeLedger,
+  verticalBreakdown,
 } from '../src/lib/prospect/ledger';
 import type { DomainProbe } from '../src/lib/prospect/types';
 
@@ -400,6 +401,7 @@ describe('ledger', () => {
     contactedAt: {},
     followedUpAt: {},
     outcomes: {},
+    verticals: {},
   };
 
   it('parses an empty or blank ledger to empty lists', () => {
@@ -548,6 +550,35 @@ describe('ledger', () => {
     expect(next.contactedAt).toEqual({});
   });
 
+  it('records the vertical a contact was discovered under, keyed raw or normalized', () => {
+    const next = recordContacted(EMPTY, ['www.acme.com', 'b.com'], [], new Date(), {
+      'www.acme.com': 'Pest Control',
+      'b.com': 'HVAC & Plumbing',
+    });
+    expect(next.verticals).toEqual({
+      'acme.com': 'Pest Control',
+      'b.com': 'HVAC & Plumbing',
+    });
+  });
+
+  it('falls back to the normalized domain when the vertical map uses it', () => {
+    const next = recordContacted(EMPTY, ['www.acme.com'], [], new Date(), {
+      'acme.com': 'Pest Control',
+    });
+    expect(next.verticals['acme.com']).toBe('Pest Control');
+  });
+
+  it('never overwrites the original vertical and tolerates a missing one', () => {
+    const first = recordContacted(EMPTY, ['acme.com'], [], new Date(), {
+      'acme.com': 'Pest Control',
+    });
+    const second = recordContacted(first, ['acme.com', 'x.com'], [], new Date(), {
+      'acme.com': 'Roofing & Landscaping',
+    });
+    expect(second.verticals['acme.com']).toBe('Pest Control');
+    expect(second.verticals['x.com']).toBeUndefined();
+  });
+
   it('records and overwrites follow-up timestamps, skipping blanks', () => {
     const at = new Date('2026-07-10T00:00:00Z');
     const next = recordFollowUp(EMPTY, ['acme.com', ''], at);
@@ -591,6 +622,15 @@ describe('ledger', () => {
     expect(ledger.contactedAt).toEqual({ 'a.com': '2026-07-01T00:00:00Z' });
     expect(ledger.followedUpAt).toEqual({});
     expect(Object.keys(ledger.outcomes)).toEqual(['d.com']);
+  });
+
+  it('parses the vertical map with normalized keys, dropping malformed entries', () => {
+    const ledger = parseLedger(
+      JSON.stringify({
+        verticals: { 'WWW.A.com': 'Pest Control', 'b.com': 42, 'c.com': '' },
+      }),
+    );
+    expect(ledger.verticals).toEqual({ 'a.com': 'Pest Control' });
   });
 
   it('ignores array values for the map fields', () => {
@@ -676,6 +716,44 @@ describe('ledger', () => {
     });
   });
 
+  describe('verticalBreakdown', () => {
+    it('is empty when nobody has been contacted', () => {
+      expect(verticalBreakdown(EMPTY)).toEqual([]);
+    });
+
+    it('groups outcomes by vertical, most contacted first', () => {
+      let ledger = recordContacted(
+        EMPTY,
+        ['a.com', 'b.com', 'c.com', 'd.com'],
+        [],
+        new Date(),
+        {
+          'a.com': 'Pest Control',
+          'b.com': 'Pest Control',
+          'c.com': 'Pest Control',
+          'd.com': 'HVAC & Plumbing',
+        },
+      );
+      ledger = recordOutcome(ledger, 'a.com', 'replied');
+      ledger = recordOutcome(ledger, 'b.com', 'booked');
+      ledger = recordOutcome(ledger, 'c.com', 'declined');
+      expect(verticalBreakdown(ledger)).toEqual([
+        { vertical: 'Pest Control', contacted: 3, replied: 1, booked: 1 },
+        { vertical: 'HVAC & Plumbing', contacted: 1, replied: 0, booked: 0 },
+      ]);
+    });
+
+    it('groups pre-tracking contacts as unknown and breaks ties alphabetically', () => {
+      const ledger = recordContacted(EMPTY, ['old.com', 'new.com'], [], new Date(), {
+        'new.com': 'Pest Control',
+      });
+      expect(verticalBreakdown(ledger)).toEqual([
+        { vertical: '(unknown)', contacted: 1, replied: 0, booked: 0 },
+        { vertical: 'Pest Control', contacted: 1, replied: 0, booked: 0 },
+      ]);
+    });
+  });
+
   // KV has no compare-and-swap, so a hand-run optout landing mid-pipeline
   // used to be erased by the pipeline's later write. Writes merge now, and
   // every field has to converge rather than clobber.
@@ -750,6 +828,17 @@ describe('ledger', () => {
       // A usable value replaces junk already on record.
       expect(mergeLedgers(junk, good).contactedAt['a.com']).toBe('2026-07-01T00:00:00Z');
       expect(mergeLedgers(junk, good).outcomes['a.com'].status).toBe('replied');
+    });
+
+    it('keeps the first recorded vertical and fills in missing ones', () => {
+      const original = { ...EMPTY, verticals: { 'a.com': 'Pest Control' } };
+      const later = {
+        ...EMPTY,
+        verticals: { 'a.com': 'Roofing & Landscaping', 'b.com': 'HVAC & Plumbing' },
+      };
+      const merged = mergeLedgers(original, later);
+      expect(merged.verticals['a.com']).toBe('Pest Control');
+      expect(merged.verticals['b.com']).toBe('HVAC & Plumbing');
     });
 
     it('merging a ledger with itself changes nothing', () => {
