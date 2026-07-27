@@ -122,8 +122,17 @@ export function describeChanges(
     }
   }
 
+  // The rate is derived from replies, bookings and sends, each of which is
+  // reported above, so it is worth a line only when one of those actually
+  // moved. On its own a rate can differ for a reason that is not news: it used
+  // to be a share of drafts rather than of sends, so the first report after
+  // that change would otherwise announce a collapse in a quiet week.
+  const rateInputs: Array<keyof LedgerStats> = ['replied', 'booked', 'sent'];
+  const rateInputMoved = rateInputs.some(
+    (key) => statValue(previous.stats, key) !== statValue(next.stats, key),
+  );
   const rateBefore = statValue(previous.stats, 'replyRate');
-  if (rateBefore !== next.stats.replyRate) {
+  if (rateInputMoved && rateBefore !== next.stats.replyRate) {
     changes.push(`Reply rate: ${rateBefore}% to ${next.stats.replyRate}%`);
   }
 

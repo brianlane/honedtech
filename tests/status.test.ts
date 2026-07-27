@@ -169,6 +169,21 @@ describe('describeChanges', () => {
     expect(changes.some((c) => c.startsWith('Drafted:'))).toBe(false);
   });
 
+  // The old rate was a share of drafts, so the stored number can differ from
+  // the new one without anything having happened.
+  it('ignores a rate that differs only because the definition changed', () => {
+    const legacy = parseSnapshot(
+      JSON.stringify({
+        stats: { discovered: 1, contacted: 1, replied: 1, replyRate: 100 },
+        dueDomains: [],
+      }),
+    );
+    const unchanged = recordOutcome(recordContacted(EMPTY, ['a.com']), 'a.com', 'replied');
+    const changes = describeChanges(legacy, buildSnapshot(unchanged, NOW));
+    expect(changes.some((c) => c.startsWith('Reply rate:'))).toBe(false);
+    expect(changes).toEqual([]);
+  });
+
   it('reports outcome counters and the reply rate', () => {
     const sent = recordSent(EMPTY, ['a.com']);
     const before = buildSnapshot(sent, NOW);
