@@ -16,11 +16,36 @@ import {
   snapshotChanged,
 } from '../src/lib/prospect/status';
 import { parseLedger } from '../src/lib/prospect/ledger';
-import { kvGet, kvPut } from './lib/kv';
+import { kvDelete, kvGet, kvPut } from './lib/kv';
 import { requiredEnv } from './lib/ledger-io';
 
 const LEDGER_KEY = 'outreach-ledger';
 const SNAPSHOT_KEY = 'status-snapshot';
+
+// Puts the snapshot back the way it was after a send that did not land, so
+// the next run still sees a change and retries. Best effort by definition: if
+// this fails too, the report is skipped rather than duplicated, which is the
+// direction we would choose anyway.
+async function restoreSnapshot(
+  token: string,
+  namespaceId: string,
+  previousRaw: string,
+): Promise<void> {
+  try {
+    if (previousRaw.trim()) {
+      await kvPut(token, namespaceId, SNAPSHOT_KEY, previousRaw);
+    } else {
+      // No snapshot existed before this run, so removing ours restores that.
+      await kvDelete(token, namespaceId, SNAPSHOT_KEY);
+    }
+  } catch (err) {
+    console.error(
+      `Could not roll back the snapshot, so this report may be skipped next run: ${
+        (err as Error).message
+      }`,
+    );
+  }
+}
 
 async function main() {
   const token = requiredEnv('CLOUDFLARE_API_TOKEN');
@@ -29,7 +54,10 @@ async function main() {
   const dryRun = process.env.DRY_RUN === '1';
 
   const ledger = parseLedger(await kvGet(token, namespaceId, LEDGER_KEY));
-  const previous = parseSnapshot(await kvGet(token, namespaceId, SNAPSHOT_KEY));
+  // Kept in raw form as well, because rolling back a failed send has to write
+  // exactly what was there before.
+  const previousRaw = await kvGet(token, namespaceId, SNAPSHOT_KEY);
+  const previous = parseSnapshot(previousRaw);
   const next = buildSnapshot(ledger);
 
   if (!force && !snapshotChanged(previous, next)) {
@@ -50,24 +78,35 @@ async function main() {
 
   const statusUrl = requiredEnv('STATUS_URL');
   const secret = requiredEnv('DIGEST_SECRET');
-  const res = await fetch(statusUrl, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-digest-secret': secret },
-    body: JSON.stringify({
-      changes,
-      stats: next.stats,
-      dueDomains: next.dueDomains,
-    }),
-  });
+
+  // Recorded BEFORE sending. The other order can email and then fail to save,
+  // which leaves the next run looking at a stale snapshot and mailing the
+  // identical report a week later. Recording first means a failed save sends
+  // nothing at all, and a failed send is undone below, so the worst case is a
+  // retry rather than a duplicate.
+  await kvPut(token, namespaceId, SNAPSHOT_KEY, serializeSnapshot(next));
+
+  let res: Response;
+  try {
+    res = await fetch(statusUrl, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-digest-secret': secret },
+      body: JSON.stringify({
+        changes,
+        stats: next.stats,
+        dueDomains: next.dueDomains,
+      }),
+    });
+  } catch (err) {
+    await restoreSnapshot(token, namespaceId, previousRaw);
+    throw err;
+  }
   if (!res.ok) {
-    // Leave the old snapshot in place so the next run retries rather than
-    // treating an unsent week as reported.
-    throw new Error(
-      `Status send failed (${res.status}): ${(await res.text()).slice(0, 300)}`,
-    );
+    const body = (await res.text()).slice(0, 300);
+    await restoreSnapshot(token, namespaceId, previousRaw);
+    throw new Error(`Status send failed (${res.status}): ${body}`);
   }
 
-  await kvPut(token, namespaceId, SNAPSHOT_KEY, serializeSnapshot(next));
   console.log('\nStatus emailed and snapshot saved.');
 }
 

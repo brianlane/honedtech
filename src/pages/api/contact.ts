@@ -17,6 +17,19 @@ function escapeHtml(value: string): string {
     .replace(/"/g, '&quot;');
 }
 
+// Anything interpolated into an email header has to lose its line breaks
+// first. A CR or LF in a subject ends the header and lets crafted input add
+// its own RFC 5322 headers to the outgoing message. Other control characters
+// go the same way, runs of whitespace collapse, and the result is capped so
+// one long field cannot push the rest of the subject out of sight.
+export function headerSafe(value: string, maxLength = 120): string {
+  return value
+    .replace(/[\u0000-\u001f\u007f]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, maxLength);
+}
+
 export const POST: APIRoute = async ({ request, redirect }) => {
   let form: FormData;
   try {
@@ -97,7 +110,9 @@ export const POST: APIRoute = async ({ request, redirect }) => {
       to: LEAD_TO,
       from: LEAD_FROM,
       replyTo: email,
-      subject: `${interest ? `${interest} audit` : 'Audit'} request: ${business} (${name})`,
+      subject: headerSafe(
+        `${interest ? `${interest} audit` : 'Audit'} request: ${business} (${name})`,
+      ),
       text: lines.join('\n'),
       html,
     });

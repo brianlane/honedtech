@@ -25,6 +25,7 @@ import {
   ledgerKnownDomains,
   ledgerKnownEmails,
   ledgerStats,
+  mergeLedgers,
   normalizeDomain,
   normalizeEmail,
   parseDomainList,
@@ -651,6 +652,93 @@ describe('ledger', () => {
       expect(stats.awaitingReply).toBe(1);
       // 2 of 4 produced a reply.
       expect(stats.replyRate).toBe(50);
+    });
+  });
+
+  // KV has no compare-and-swap, so a hand-run optout landing mid-pipeline
+  // used to be erased by the pipeline's later write. Writes merge now, and
+  // every field has to converge rather than clobber.
+  describe('mergeLedgers', () => {
+    it('unions every list, losing nothing from either side', () => {
+      const a = { ...EMPTY, discovered: ['a.com'], contacted: ['a.com'], contactedEmails: ['a@a.com'] };
+      const b = { ...EMPTY, discovered: ['b.com'], optedOut: ['b.com'], contactedEmails: ['b@b.com'] };
+      const merged = mergeLedgers(a, b);
+      expect(merged.discovered.sort()).toEqual(['a.com', 'b.com']);
+      expect(merged.contacted).toEqual(['a.com']);
+      expect(merged.optedOut).toEqual(['b.com']);
+      expect(merged.contactedEmails.sort()).toEqual(['a@a.com', 'b@b.com']);
+    });
+
+    // The opt-out that motivated the whole change.
+    it('keeps a concurrent opt-out that the other snapshot never saw', () => {
+      const pipeline = { ...EMPTY, discovered: ['x.com'], contacted: ['x.com'] };
+      const manual = { ...EMPTY, optedOut: ['x.com'], discovered: ['x.com'] };
+      expect(mergeLedgers(manual, pipeline).optedOut).toEqual(['x.com']);
+      expect(mergeLedgers(pipeline, manual).optedOut).toEqual(['x.com']);
+    });
+
+    it('keeps the earliest first contact, since follow-up timing keys off it', () => {
+      const early = { ...EMPTY, contactedAt: { 'a.com': '2026-07-01T00:00:00Z' } };
+      const late = { ...EMPTY, contactedAt: { 'a.com': '2026-07-09T00:00:00Z' } };
+      expect(mergeLedgers(early, late).contactedAt['a.com']).toBe('2026-07-01T00:00:00Z');
+      expect(mergeLedgers(late, early).contactedAt['a.com']).toBe('2026-07-01T00:00:00Z');
+    });
+
+    it('keeps the latest follow-up and outcome, which correct an earlier state', () => {
+      const old = {
+        ...EMPTY,
+        followedUpAt: { 'a.com': '2026-07-01T00:00:00Z' },
+        outcomes: { 'a.com': { status: 'replied' as const, at: '2026-07-01T00:00:00Z' } },
+      };
+      const fresh = {
+        ...EMPTY,
+        followedUpAt: { 'a.com': '2026-07-08T00:00:00Z' },
+        outcomes: { 'a.com': { status: 'booked' as const, at: '2026-07-08T00:00:00Z' } },
+      };
+      expect(mergeLedgers(old, fresh).followedUpAt['a.com']).toBe('2026-07-08T00:00:00Z');
+      expect(mergeLedgers(fresh, old).followedUpAt['a.com']).toBe('2026-07-08T00:00:00Z');
+      expect(mergeLedgers(old, fresh).outcomes['a.com'].status).toBe('booked');
+      expect(mergeLedgers(fresh, old).outcomes['a.com'].status).toBe('booked');
+    });
+
+    it('takes an entry the other side does not have at all', () => {
+      const empty = { ...EMPTY };
+      const full = {
+        ...EMPTY,
+        contactedAt: { 'a.com': '2026-07-01T00:00:00Z' },
+        outcomes: { 'a.com': { status: 'replied' as const, at: '2026-07-01T00:00:00Z' } },
+      };
+      expect(mergeLedgers(empty, full).contactedAt['a.com']).toBe('2026-07-01T00:00:00Z');
+      expect(mergeLedgers(empty, full).outcomes['a.com'].status).toBe('replied');
+    });
+
+    it('lets a usable timestamp beat an unparseable one, either way round', () => {
+      const good = {
+        ...EMPTY,
+        contactedAt: { 'a.com': '2026-07-01T00:00:00Z' },
+        outcomes: { 'a.com': { status: 'replied' as const, at: '2026-07-01T00:00:00Z' } },
+      };
+      const junk = {
+        ...EMPTY,
+        contactedAt: { 'a.com': 'not-a-date' },
+        outcomes: { 'a.com': { status: 'booked' as const, at: 'not-a-date' } },
+      };
+      // Incoming junk never displaces a usable value.
+      expect(mergeLedgers(good, junk).contactedAt['a.com']).toBe('2026-07-01T00:00:00Z');
+      expect(mergeLedgers(good, junk).outcomes['a.com'].status).toBe('replied');
+      // A usable value replaces junk already on record.
+      expect(mergeLedgers(junk, good).contactedAt['a.com']).toBe('2026-07-01T00:00:00Z');
+      expect(mergeLedgers(junk, good).outcomes['a.com'].status).toBe('replied');
+    });
+
+    it('merging a ledger with itself changes nothing', () => {
+      const ledger = {
+        ...EMPTY,
+        discovered: ['a.com'],
+        contactedAt: { 'a.com': '2026-07-01T00:00:00Z' },
+        outcomes: { 'a.com': { status: 'replied' as const, at: '2026-07-01T00:00:00Z' } },
+      };
+      expect(mergeLedgers(ledger, ledger)).toEqual(ledger);
     });
   });
 
