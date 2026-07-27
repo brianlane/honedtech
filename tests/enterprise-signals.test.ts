@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   MAX_LAG_DAYS,
+  MIN_AFFECTED_SEATS,
   MIN_LAG_DAYS,
   daysSinceEffective,
   isWithinContactWindow,
   normalizeWarnRecord,
+  selectContactableRecords,
   unreclaimedSeatSpend,
   warnSignal,
 } from '../src/lib/enterprise/warn';
@@ -35,6 +37,12 @@ import {
   estimateSeats,
   reclaimUrl,
 } from '../src/lib/enterprise/brief';
+import {
+  MIN_MATCH_RATIO,
+  isLikelySameCompany,
+  nameMatchRatio,
+  significantTokens,
+} from '../src/lib/enterprise/match';
 import type {
   AccountSignal,
   EnterpriseAccount,
@@ -109,6 +117,55 @@ describe('normalizeWarnRecord', () => {
   });
 });
 
+describe('company name matching', () => {
+  it('strips legal and country qualifiers but keeps descriptive words', () => {
+    expect(significantTokens('Compass Group USA, Inc.')).toEqual(['compass', 'group']);
+    expect(significantTokens('The Boeing Company')).toEqual(['boeing']);
+    expect(significantTokens('Flagship Facilities Services, LLC')).toEqual([
+      'flagship',
+      'facilities',
+      'services',
+    ]);
+  });
+
+  it('drops single characters, which carry no signal', () => {
+    expect(significantTokens('A & B Logistics')).toEqual(['logistics']);
+  });
+
+  // The real failures that motivated this gate. Each of these resolved to an
+  // unrelated company's website against live Places results.
+  it('rejects the local businesses Places actually returned', () => {
+    expect(isLikelySameCompany('USIC Locating Services', 'USI Locate AZ')).toBe(false);
+    expect(isLikelySameCompany('Compass Group USA', 'Compass Reporting Group')).toBe(false);
+  });
+
+  // A superset scores a perfect one-way match, which is exactly how a Houston
+  // builder passed for a national food service company.
+  it('counts a candidate\u2019s extra words against it', () => {
+    expect(nameMatchRatio('Compass Group USA', 'Compass Building Group')).toBeCloseTo(2 / 3);
+    expect(isLikelySameCompany('Compass Group USA', 'Compass Building Group')).toBe(false);
+  });
+
+  it('accepts a formal name against its shorter brand form', () => {
+    expect(isLikelySameCompany('Rite Aid Corporation', 'Rite Aid')).toBe(true);
+    expect(isLikelySameCompany('Flagship Facilities Services, LLC', 'Flagship Facilities Services')).toBe(true);
+    // Three of four tokens is exactly the bar.
+    expect(nameMatchRatio('Bath Body Works Direct', 'Bath & Body Works')).toBe(MIN_MATCH_RATIO);
+    expect(isLikelySameCompany('Bath Body Works Direct', 'Bath & Body Works')).toBe(true);
+  });
+
+  it('rejects a candidate sharing only one word of several', () => {
+    expect(nameMatchRatio('Acme Logistics Services', 'Acme Dental')).toBeCloseTo(1 / 4);
+    expect(isLikelySameCompany('Acme Logistics Services', 'Acme Dental')).toBe(false);
+  });
+
+  it('scores zero when either side has nothing distinctive left', () => {
+    expect(nameMatchRatio('The Company LLC', 'Anything')).toBe(0);
+    expect(nameMatchRatio('Acme Logistics', 'Inc')).toBe(0);
+    expect(isLikelySameCompany('', 'Acme')).toBe(false);
+  });
+});
+
 describe('the contact window', () => {
   const base: WarnRecord = { employer: 'Acme', employeesAffected: 100 };
 
@@ -143,6 +200,86 @@ describe('the contact window', () => {
 
   it('includes one inside the window', () => {
     expect(isWithinContactWindow({ ...base, effectiveDate: IN_WINDOW }, NOW)).toBe(true);
+  });
+});
+
+describe('selectContactableRecords', () => {
+  const day = (offset: number): string =>
+    new Date(NOW.getTime() - offset * 86_400_000).toISOString().slice(0, 10);
+
+  const big = MIN_AFFECTED_SEATS + 5;
+
+  const records: WarnRecord[] = [
+    { employer: 'Old', state: 'CA', employeesAffected: big, effectiveDate: day(300) },
+    { employer: 'Fresh', state: 'CA', employeesAffected: big, effectiveDate: day(10) },
+    { employer: 'Mid', state: 'CA', employeesAffected: big, effectiveDate: day(200) },
+    { employer: 'Newest', state: 'TX', employeesAffected: big, effectiveDate: day(50) },
+    { employer: 'NoCount', state: 'CA', effectiveDate: day(100) },
+    { employer: 'NoDate', state: 'CA', employeesAffected: big },
+  ];
+
+  it('keeps only in-window filings that carry a headcount, freshest first', () => {
+    expect(selectContactableRecords(records, NOW).map((r) => r.employer)).toEqual([
+      'Newest',
+      'Mid',
+    ]);
+  });
+
+  it('drops a layoff too small to be worth a $2,499 pitch', () => {
+    const tiny: WarnRecord[] = [
+      { employer: 'Tiny', state: 'CA', employeesAffected: 1, effectiveDate: day(100) },
+      {
+        employer: 'JustUnder',
+        state: 'CA',
+        employeesAffected: MIN_AFFECTED_SEATS - 1,
+        effectiveDate: day(100),
+      },
+      {
+        employer: 'JustOver',
+        state: 'CA',
+        employeesAffected: MIN_AFFECTED_SEATS,
+        effectiveDate: day(100),
+      },
+    ];
+    expect(selectContactableRecords(tiny, NOW).map((r) => r.employer)).toEqual(['JustOver']);
+  });
+
+  // A national employer files per site. Amazon alone accounts for over a
+  // hundred filings in a typical window, which would exhaust the weekly limit
+  // and pay for a Places lookup every time.
+  it('keeps only the freshest filing per employer', () => {
+    const repeated: WarnRecord[] = [
+      { employer: 'Amazon', state: 'CA', employeesAffected: big, effectiveDate: day(200) },
+      { employer: '  amazon  ', state: 'TX', employeesAffected: big, effectiveDate: day(60) },
+      { employer: 'Amazon', state: 'NY', employeesAffected: big, effectiveDate: day(120) },
+    ];
+    const picked = selectContactableRecords(repeated, NOW);
+    expect(picked).toHaveLength(1);
+    expect(picked[0].state).toBe('TX');
+  });
+
+  it('narrows to the given states, case-insensitively', () => {
+    expect(
+      selectContactableRecords(records, NOW, ['tx']).map((r) => r.employer),
+    ).toEqual(['Newest']);
+  });
+
+  it('ignores blank entries in the state filter', () => {
+    expect(selectContactableRecords(records, NOW, ['', '  ']).map((r) => r.employer)).toEqual([
+      'Newest',
+      'Mid',
+    ]);
+  });
+
+  it('skips a record with no state when a state filter is set', () => {
+    const stateless: WarnRecord[] = [
+      { employer: 'Nowhere', employeesAffected: big, effectiveDate: day(100) },
+    ];
+    expect(selectContactableRecords(stateless, NOW, ['CA'])).toEqual([]);
+  });
+
+  it('returns nothing for an empty archive', () => {
+    expect(selectContactableRecords([], NOW)).toEqual([]);
   });
 });
 

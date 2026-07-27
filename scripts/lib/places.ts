@@ -10,6 +10,7 @@ import {
   type SearchQuery,
 } from '../../src/lib/prospect/discover';
 import { normalizeDomain } from '../../src/lib/prospect/ledger';
+import { isLikelySameCompany } from '../../src/lib/enterprise/match';
 import type { Prospect } from '../../src/lib/prospect/compose';
 
 const SEARCH_URL = 'https://places.googleapis.com/v1/places:searchText';
@@ -110,6 +111,10 @@ export async function discoverProspects(
 // One search per company, and null when nothing plausible comes back: a wrong
 // domain is far worse than a skipped account, since every later signal would
 // be attributed to a stranger.
+//
+// Places matches loosely, so the result's own name has to clear
+// isLikelySameCompany before we believe it. Without that check a search for
+// "Compass Group USA" returns a local builder called "Compass Builds".
 export async function resolveCompanyDomain(
   apiKey: string,
   company: string,
@@ -121,7 +126,7 @@ export async function resolveCompanyDomain(
     places = await searchOnce(
       apiKey,
       { textQuery, vertical: 'enterprise', city: city ?? '' },
-      3,
+      5,
     );
   } catch (err) {
     console.log(`  ! domain lookup failed for ${company}: ${(err as Error).message}`);
@@ -130,7 +135,8 @@ export async function resolveCompanyDomain(
 
   for (const place of places) {
     const website = place.websiteUri?.trim();
-    if (!website) {
+    const name = place.displayName?.text?.trim();
+    if (!website || !name || !isLikelySameCompany(company, name)) {
       continue;
     }
     const domain = normalizeDomain(website);

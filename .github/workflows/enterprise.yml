@@ -57,10 +57,13 @@ jobs:
           GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           DIGEST_SECRET: ${{ secrets.DIGEST_SECRET }}
+          # Optional. The default WARN archive needs no key, so an unset
+          # secret is the normal case rather than a misconfiguration.
           WARN_API_KEY: ${{ secrets.WARN_API_KEY }}
           OUTREACH_KV_NAMESPACE_ID: ${{ vars.OUTREACH_KV_NAMESPACE_ID }}
           DIGEST_URL: ${{ vars.DIGEST_URL }}
-          WARN_API_URL: ${{ vars.WARN_API_URL }}
+          # Optional override; the pipeline has a working default.
+          WARN_ARCHIVE_URL: ${{ vars.WARN_ARCHIVE_URL }}
           WARN_STATES: ${{ inputs.states || vars.WARN_STATES }}
           ENTERPRISE_LIMIT: ${{ inputs.limit || '6' }}
           DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}

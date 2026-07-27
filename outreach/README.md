@@ -223,15 +223,26 @@ Actions tab with a custom limit and state filter.
 ### Signal one: WARN layoff filings
 
 Every US employer above the statutory size threshold must notify the state
-before a mass layoff. Those registries are public record, and several
-aggregators republish them as JSON. A headcount drop is a dated, checkable
-fact, and per-seat licenses almost never fall with it.
+before a mass layoff. Those registries are public record. A headcount drop is
+a dated, checkable fact, and per-seat licenses almost never fall with it.
 
-Configure the source with `WARN_API_URL` and `WARN_API_KEY`. The normalizer in
+**No API key is required.** The default source is the CanaryWhistle archive,
+one bulk JSON of every historical filing, licensed CC BY 4.0 for commercial
+use crediting [CanaryWhistle](https://canarywhistle.com/data). Its archive is
+explicitly "layoffs already notified over 30 days ago and already effective",
+which lines up with the decency window below instead of fighting it. About
+17,000 filings, of which roughly 2,000 sit inside our window at any time.
+
+Deliberately not WARN Firehose: its free tier serves only recent filings and
+paywalls history, which is exactly backwards for a pipeline whose whole point
+is waiting 45 days before making contact.
+
+Override with `WARN_ARCHIVE_URL`, and set `WARN_API_KEY` only if you point at
+a provider that needs auth. The normalizer in
 [../src/lib/enterprise/warn.ts](../src/lib/enterprise/warn.ts) accepts the
 common field spellings across providers, so switching vendors is a config
-change rather than a rewrite. Set `WARN_STATES` to a comma-separated list to
-narrow coverage.
+change rather than a rewrite. `WARN_STATES` narrows coverage, but leave it
+blank: most single states have nothing in the window at a given moment.
 
 **The lag rule matters more than the data.** Emailing a company days after it
 cuts staff is ghoulish and gets mail blocked. Nothing is surfaced until at
@@ -239,10 +250,27 @@ least 45 days past the effective date, and nothing older than 270 days,
 because by then the seats were probably caught and the pitch stops being
 credible. Both bounds live in `MIN_LAG_DAYS` and `MAX_LAG_DAYS`.
 
-WARN filings name an employer but carry no website, so the name is resolved to
-a domain through the Places client we already pay for. A lookup that returns
-nothing is skipped rather than guessed at: a wrong domain would attribute
-every later signal to a stranger.
+Three more filters keep the list worth reading:
+
+- **A size floor.** Below `MIN_AFFECTED_SEATS` (25) a layoff is worth about
+  $16 a month of seats, which is an insulting thing to raise alongside a
+  $2,499 fee.
+- **One filing per employer.** Large employers file per site, and Amazon alone
+  accounts for over a hundred filings in a typical window. Freshest wins, so
+  the month named in the draft is the true one.
+- **A name-match gate on domain resolution.** WARN filings carry no website,
+  so the employer name is resolved through the Places client we already pay
+  for. Places is built for local business discovery, not corporate entity
+  resolution, and searching "Compass Group USA" returns a Houston firm called
+  "Compass Building Group". A candidate has to clear a symmetric name overlap
+  in [../src/lib/enterprise/match.ts](../src/lib/enterprise/match.ts) before
+  we believe it, and unresolved accounts are skipped rather than guessed at.
+  Symmetry is the point: measuring only how much of the employer appears in
+  the candidate lets any superset score perfectly.
+
+The bar is set where false negatives are cheap and false positives are not.
+Thousands of filings compete for a handful of weekly slots, so skipping a real
+match costs nothing and emailing the wrong company costs the sender.
 
 ### Signal two: public job boards
 
@@ -258,7 +286,16 @@ version of the widget-overlap finding on the SMB side. A dedicated
 administrator req means the deployment is big enough to need a full-time
 owner.
 
+Against Figma's board this returns 175 postings and four overlaps: Slack plus
+Teams plus Zoom, Tableau plus Looker, Workday plus ADP, and NetSuite plus
+Workiva. Expect it to stay quiet for the mid-market manufacturers and
+nonprofits that dominate WARN filings, since most do not use a hosted ATS. A
+company with no readable board simply contributes no stack signal.
+
 ### The digest carries briefs, not addresses
+
+The digest subject reads "Enterprise digest" rather than "Outreach digest",
+since both tracks land in the same inbox and need different handling.
 
 Enterprise drafts arrive with `to` deliberately empty and a **research brief**
 listing the evidence behind each signal, with links back to the official state

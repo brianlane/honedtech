@@ -174,6 +174,7 @@ describe('POST /api/internal/digest', () => {
     const res = await POST(
       makeContext(
         {
+          kind: 'enterprise',
           drafts: [
             {
               ...DRAFT,
@@ -187,6 +188,9 @@ describe('POST /api/internal/digest', () => {
     );
     expect(res.status).toBe(200);
     const sent = vi.mocked(env.EMAIL.send).mock.calls[0][0] as Record<string, unknown>;
+    // The two tracks share an inbox, so the subject has to say which is which.
+    expect(sent.subject).toContain('Enterprise digest');
+    expect(sent.text).toContain('find the named executive on LinkedIn');
     expect(sent.text).toContain('Research brief:');
     expect(sent.text).toContain('  - layoff [$3,780/mo]: WARN filing');
     expect(sent.html).toContain('<strong>Research brief</strong>');

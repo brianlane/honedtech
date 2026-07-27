@@ -46,15 +46,20 @@ export const POST: APIRoute = async ({ request }) => {
     return rejection;
   }
 
-  let payload: { drafts?: Draft[]; followUps?: FollowUp[] };
+  let payload: { drafts?: Draft[]; followUps?: FollowUp[]; kind?: string };
   try {
     payload = (await request.json()) as {
       drafts?: Draft[];
       followUps?: FollowUp[];
+      kind?: string;
     };
   } catch {
     return new Response('Invalid JSON body', { status: 400 });
   }
+
+  // The two tracks land in the same inbox and need different handling, so the
+  // subject says which one this is at a glance.
+  const isEnterprise = payload.kind === 'enterprise';
 
   const drafts = (payload.drafts ?? []).filter(
     (d): d is ValidDraft => Boolean(d && d.subject && d.body),
@@ -127,13 +132,16 @@ export const POST: APIRoute = async ({ request }) => {
     : '';
 
   const intro = drafts.length
-    ? `${drafts.length} outreach draft(s) ready for review. Send from Gmail using send-as brian@honedtech.com, then log the domains so they are not contacted again.`
+    ? isEnterprise
+      ? `${drafts.length} enterprise account(s) researched. Read each brief, find the named executive on LinkedIn, then send from Gmail using send-as brian@honedtech.com.`
+      : `${drafts.length} outreach draft(s) ready for review. Send from Gmail using send-as brian@honedtech.com, then log the domains so they are not contacted again.`
     : 'No new drafts this morning, but you have follow-ups due.';
 
+  const label = isEnterprise ? 'Enterprise digest' : 'Outreach digest';
   const subject = drafts.length
-    ? `Outreach digest: ${drafts.length} draft(s) ready` +
+    ? `${label}: ${drafts.length} draft(s) ready` +
       (followUps.length ? `, ${followUps.length} follow-up(s) due` : '')
-    : `Outreach digest: ${followUps.length} follow-up(s) due`;
+    : `${label}: ${followUps.length} follow-up(s) due`;
 
   try {
     await env.EMAIL.send({

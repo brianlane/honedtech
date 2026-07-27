@@ -1,24 +1,34 @@
-// WARN Act filing source. Network I/O only; normalization and the contact
-// window rule live in src/lib/enterprise/warn.ts so they stay testable.
+// WARN Act filing source. Network I/O only; normalization, the contact window
+// rule, and selection live in src/lib/enterprise/warn.ts so they stay
+// testable.
 //
-// Several aggregators republish the state registries (WARN Firehose,
-// CanaryWhistle, LayoffLens). The endpoint and the auth header are env-driven
-// so switching provider is configuration rather than a rewrite, and the
-// normalizer already tolerates the common field spellings.
+// Default source is the CanaryWhistle archive, which needs no API key and is
+// licensed CC BY 4.0 for commercial use, crediting CanaryWhistle
+// (https://canarywhistle.com/data). It publishes one bulk JSON of every
+// historical filing rather than a query API, which suits us: its archive is
+// explicitly "layoffs already notified over 30 days ago and already
+// effective", so it lines up with the decency window instead of fighting it.
+//
+// Deliberately not WARN Firehose: its free tier serves only recent filings
+// and paywalls history, which is exactly backwards for a pipeline whose whole
+// point is waiting 45 days before making contact.
+//
+// The endpoint and an optional key header are env-driven so switching
+// provider stays configuration. The normalizer already accepts the common
+// field spellings across providers.
 import {
-  MAX_LAG_DAYS,
-  MIN_LAG_DAYS,
   normalizeWarnRecord,
+  selectContactableRecords,
 } from '../../src/lib/enterprise/warn';
 import type { WarnRecord } from '../../src/lib/enterprise/types';
 
-const DEFAULT_URL = 'https://warnfirehose.com/api/records';
+const DEFAULT_ARCHIVE_URL =
+  'https://canarywhistle.com/data/canarywhistle-warn-layoffs.json';
 
-function isoDay(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
+// The archive is a few megabytes, so allow more than a normal API call.
+const TIMEOUT_MS = 60_000;
 
-// Pulls the array of records out of whichever envelope the provider uses.
+// Pulls the array of filings out of whichever envelope the provider uses.
 function extractRows(payload: unknown): unknown[] {
   if (Array.isArray(payload)) {
     return payload;
@@ -37,74 +47,49 @@ function extractRows(payload: unknown): unknown[] {
 
 export interface WarnFetchOptions {
   now?: Date;
-  limit?: number;
-  // Two-letter codes. Empty means every state the provider covers.
+  // Two-letter codes. Empty means every state the provider covers, which is
+  // the sensible default: filtering to one state usually yields nothing.
   states?: string[];
 }
 
-// Fetches filings whose effective date already sits inside the contact
-// window, so nothing outside it is ever pulled into the run in the first
-// place.
+// Filings already inside the contact window, freshest first.
 export async function fetchWarnRecords(
   opts: WarnFetchOptions = {},
 ): Promise<WarnRecord[]> {
-  const { now = new Date(), limit = 200, states = [] } = opts;
-  const baseUrl = process.env.WARN_API_URL || DEFAULT_URL;
+  const { now = new Date(), states = [] } = opts;
+  const url = process.env.WARN_ARCHIVE_URL || DEFAULT_ARCHIVE_URL;
   const apiKey = process.env.WARN_API_KEY;
 
-  // Oldest allowed first: a filing MAX_LAG_DAYS old is the earliest we will
-  // still pitch, and one MIN_LAG_DAYS old is the most recent that is decent.
-  const from = new Date(now.getTime() - MAX_LAG_DAYS * 86_400_000);
-  const to = new Date(now.getTime() - MIN_LAG_DAYS * 86_400_000);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
-  const queries: string[][] = states.length
-    ? states.map((s) => ['state', s])
-    : [[]];
-
-  const collected: WarnRecord[] = [];
-  const seen = new Set<string>();
-
-  for (const pair of queries) {
-    const url = new URL(baseUrl);
-    url.searchParams.set('date_from', isoDay(from));
-    url.searchParams.set('date_to', isoDay(to));
-    url.searchParams.set('limit', String(limit));
-    if (pair.length === 2) {
-      url.searchParams.set(pair[0], pair[1]);
+  let payload: unknown;
+  try {
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: apiKey ? { 'X-API-Key': apiKey } : {},
+    });
+    if (!res.ok) {
+      console.warn(`  ! WARN source returned ${res.status}`);
+      return [];
     }
-
-    let payload: unknown;
-    try {
-      const res = await fetch(url, {
-        headers: apiKey ? { 'X-API-Key': apiKey } : {},
-      });
-      if (!res.ok) {
-        console.warn(
-          `  ! WARN source returned ${res.status} for ${pair[1] ?? 'all states'}`,
-        );
-        continue;
-      }
-      payload = await res.json();
-    } catch (err) {
-      console.warn(`  ! WARN fetch failed: ${(err as Error).message}`);
-      continue;
-    }
-
-    for (const row of extractRows(payload)) {
-      const record = normalizeWarnRecord(row);
-      if (!record) {
-        continue;
-      }
-      // One national layoff can appear as several state filings, so collapse
-      // on employer plus effective date rather than treating each as new.
-      const key = `${record.employer.toLowerCase()}|${record.effectiveDate ?? ''}`;
-      if (seen.has(key)) {
-        continue;
-      }
-      seen.add(key);
-      collected.push(record);
-    }
+    payload = await res.json();
+  } catch (err) {
+    console.warn(`  ! WARN fetch failed: ${(err as Error).message}`);
+    return [];
+  } finally {
+    clearTimeout(timer);
   }
 
-  return collected;
+  const rows = extractRows(payload);
+  const records: WarnRecord[] = [];
+  for (const row of rows) {
+    const record = normalizeWarnRecord(row);
+    if (record) {
+      records.push(record);
+    }
+  }
+  console.log(`  archive: ${rows.length} filing(s) read`);
+
+  return selectContactableRecords(records, now, states);
 }
