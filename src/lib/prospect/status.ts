@@ -49,6 +49,12 @@ export function serializeSnapshot(snapshot: StatusSnapshot): string {
 
 // A missing previous snapshot counts as changed, so the very first run always
 // reports rather than silently doing nothing.
+//
+// Otherwise the question is exactly "is there anything to say", asked of the
+// code that says it. Comparing serialized snapshots instead meant any
+// difference the change list never mentions (a derived counter, or a field
+// renamed between releases) mailed a report with an empty "what changed"
+// section, which is worse than the silence it broke.
 export function snapshotChanged(
   previous: StatusSnapshot | null,
   next: StatusSnapshot,
@@ -56,7 +62,7 @@ export function snapshotChanged(
   if (!previous) {
     return true;
   }
-  return serializeSnapshot(previous) !== serializeSnapshot(next);
+  return describeChanges(previous, next).length > 0;
 }
 
 // Where a counter's value lives in a snapshot written before drafting and

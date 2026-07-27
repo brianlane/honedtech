@@ -109,9 +109,15 @@ export const POST: APIRoute = async ({ request }) => {
         'prospect until you send it from Gmail, then log it with npm run prospect:sent.'
       : '';
 
+  // Only reachable on a forced send, since the runner stays silent when there
+  // is nothing to report. Better than a heading with nothing under it.
+  const changeLines = changes.length
+    ? changes
+    : ['Nothing moved since the last report.'];
+
   const text = [
     'What changed this week:',
-    ...changes.map((c) => `- ${c}`),
+    ...changeLines.map((c) => `- ${c}`),
     ...(pendingNote ? ['', pendingNote] : []),
     '',
     'Current totals:',
@@ -128,7 +134,7 @@ export const POST: APIRoute = async ({ request }) => {
 
   const html = [
     '<h2>What changed this week</h2><ul>',
-    ...changes.map((c) => `<li>${escapeHtml(c)}</li>`),
+    ...changeLines.map((c) => `<li>${escapeHtml(c)}</li>`),
     '</ul>',
     pendingNote ? `<p><strong>${escapeHtml(pendingNote)}</strong></p>` : '',
     '<h3>Current totals</h3><ul>',

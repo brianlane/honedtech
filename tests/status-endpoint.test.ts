@@ -164,6 +164,11 @@ describe('POST /api/internal/status', () => {
       makeContext({ changes: [], stats: { drafted: 6 } }, 'top-secret'),
     );
     expect(res.status).toBe(200);
+    // A forced send is the only way here, and a heading with nothing under it
+    // reads like the email is broken.
+    const sent = vi.mocked(env.EMAIL.send).mock.calls[0][0] as Record<string, unknown>;
+    expect(sent.text).toContain('Nothing moved since the last report.');
+    expect(sent.html).toContain('Nothing moved since the last report.');
   });
 
   it('returns 500 when the email send fails', async () => {

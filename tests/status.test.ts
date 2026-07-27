@@ -77,6 +77,26 @@ describe('snapshotChanged', () => {
     const after = buildSnapshot(withOverdueContact('a.com'), NOW);
     expect(snapshotChanged(before, after)).toBe(true);
   });
+
+  // Whether to send and what to say have to agree, or the email arrives with
+  // an empty "what changed" section. An older snapshot storing the same
+  // backlog under the previous field names is exactly that case.
+  it('stays silent for a snapshot that only differs in shape', () => {
+    const legacy = parseSnapshot(
+      JSON.stringify({
+        stats: { discovered: 15, contacted: 15, emailed: 7, awaitingReply: 15, replyRate: 0 },
+        dueDomains: [],
+      }),
+    );
+    const sameLedger = recordContacted(
+      EMPTY,
+      Array.from({ length: 15 }, (_, i) => `biz${i + 1}.com`),
+      Array.from({ length: 7 }, (_, i) => `owner@biz${i + 1}.com`),
+    );
+    const next = buildSnapshot(sameLedger, NOW);
+    expect(describeChanges(legacy, next)).toEqual([]);
+    expect(snapshotChanged(legacy, next)).toBe(false);
+  });
 });
 
 describe('describeChanges', () => {
