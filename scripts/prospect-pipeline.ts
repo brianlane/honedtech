@@ -26,6 +26,7 @@ import type { Finding } from '../src/lib/prospect/types';
 import { discoverProspects } from './lib/places';
 import { probeDomain } from './lib/probe';
 import { readLedgerStrict, saveLedgerMerged } from './lib/ledger-io';
+import { parseRunLimit } from '../src/lib/prospect/limits';
 import { polishWithGemini } from './lib/polish';
 
 const LEDGER_KEY = 'outreach-ledger';
@@ -49,7 +50,7 @@ function required(name: string): string {
 }
 
 async function main() {
-  const limit = Number(process.argv[2] ?? process.env.PROSPECT_LIMIT ?? '12');
+  const limit = parseRunLimit(process.argv[2] ?? process.env.PROSPECT_LIMIT, 12);
   const dryRun = process.env.DRY_RUN === '1';
 
   const placesKey = required('GOOGLE_PLACES_API_KEY');

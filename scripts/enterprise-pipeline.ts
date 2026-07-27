@@ -33,6 +33,7 @@ import { fetchWarnRecords } from './lib/warn-source';
 import { resolveCompanyDomain } from './lib/places';
 import { fetchJobPostings } from './lib/ats-fetch';
 import { readLedgerStrict, saveLedgerMerged } from './lib/ledger-io';
+import { parseRunLimit } from '../src/lib/prospect/limits';
 
 // Deliberately separate from the SMB "outreach-ledger" so the two tracks never
 // suppress each other. A local plumber and a 400-person employer are different
@@ -59,7 +60,7 @@ function required(name: string): string {
 }
 
 async function main() {
-  const limit = Number(process.argv[2] ?? process.env.ENTERPRISE_LIMIT ?? '6');
+  const limit = parseRunLimit(process.argv[2] ?? process.env.ENTERPRISE_LIMIT, 6);
   const dryRun = process.env.DRY_RUN === '1';
 
   const cfToken = required('CLOUDFLARE_API_TOKEN');
