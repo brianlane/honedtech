@@ -19,15 +19,13 @@ import {
   ledgerKnownDomains,
   ledgerKnownEmails,
   normalizeEmail,
-  parseLedger,
   recordContacted,
   recordDiscovered,
 } from '../src/lib/prospect/ledger';
 import type { Finding } from '../src/lib/prospect/types';
 import { discoverProspects } from './lib/places';
 import { probeDomain } from './lib/probe';
-import { kvGet } from './lib/kv';
-import { saveLedgerMerged } from './lib/ledger-io';
+import { readLedgerStrict, saveLedgerMerged } from './lib/ledger-io';
 import { polishWithGemini } from './lib/polish';
 
 const LEDGER_KEY = 'outreach-ledger';
@@ -60,7 +58,7 @@ async function main() {
 
   console.log(`Pipeline start (limit ${limit}${dryRun ? ', dry run' : ''})`);
 
-  const ledger = parseLedger(await kvGet(cfToken, namespaceId, LEDGER_KEY));
+  const ledger = await readLedgerStrict(cfToken, namespaceId, LEDGER_KEY);
   const known = ledgerKnownDomains(ledger);
   const knownEmails = ledgerKnownEmails(ledger);
   console.log(

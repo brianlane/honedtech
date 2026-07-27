@@ -26,15 +26,13 @@ import type {
 } from '../src/lib/enterprise/types';
 import {
   ledgerKnownDomains,
-  parseLedger,
   recordContacted,
   recordDiscovered,
 } from '../src/lib/prospect/ledger';
 import { fetchWarnRecords } from './lib/warn-source';
 import { resolveCompanyDomain } from './lib/places';
 import { fetchJobPostings } from './lib/ats-fetch';
-import { kvGet } from './lib/kv';
-import { saveLedgerMerged } from './lib/ledger-io';
+import { readLedgerStrict, saveLedgerMerged } from './lib/ledger-io';
 
 // Deliberately separate from the SMB "outreach-ledger" so the two tracks never
 // suppress each other. A local plumber and a 400-person employer are different
@@ -74,7 +72,7 @@ async function main() {
 
   console.log(`Enterprise pipeline start (limit ${limit}${dryRun ? ', dry run' : ''})`);
 
-  const ledger = parseLedger(await kvGet(cfToken, namespaceId, LEDGER_KEY));
+  const ledger = await readLedgerStrict(cfToken, namespaceId, LEDGER_KEY);
   const known = ledgerKnownDomains(ledger);
   console.log(`Ledger: ${known.size} known domain(s)`);
 
