@@ -40,6 +40,10 @@ import { parseRunLimit } from '../src/lib/prospect/limits';
 // conversations even in the unlikely case they share a domain.
 const LEDGER_KEY = 'enterprise-ledger';
 
+// How many accounts to research per account contacted. Three keeps the extra
+// Places spend modest while giving the score a real choice to make.
+const POOL_MULTIPLIER = 3;
+
 interface Draft {
   business: string;
   domain: string;
@@ -91,8 +95,17 @@ async function main() {
   const accounts: EnterpriseAccount[] = [];
   const resolvedDomains: string[] = [];
 
+  // Research more accounts than we will contact, then let the score choose.
+  //
+  // Stopping at the first `limit` that resolved meant ranking only reordered
+  // a set already fixed by WARN freshness, so a stronger account further down
+  // the list was never researched at all. Researching a wider pool and taking
+  // the best costs a few more Places lookups per run, which is the right
+  // trade when the alternative is mailing the merely-earliest.
+  const researchPool = limit * POOL_MULTIPLIER;
+
   for (const record of records) {
-    if (accounts.length >= limit) {
+    if (accounts.length >= researchPool) {
       break;
     }
     const layoff = warnSignal(record);
@@ -138,7 +151,15 @@ async function main() {
     return;
   }
 
-  const drafts: Draft[] = rankAccounts(accounts).map((account) => {
+  // Rank the whole researched pool, then keep the strongest `limit`. The cap
+  // applies here rather than to research, so the score decides who gets
+  // contacted instead of whoever WARN happened to list first.
+  const chosen = rankAccounts(accounts).slice(0, limit);
+  console.log(
+    `\nResearched ${accounts.length} account(s), contacting the top ${chosen.length}.`,
+  );
+
+  const drafts: Draft[] = chosen.map((account) => {
     const composed = composeEnterpriseEmail(account);
     return {
       business: account.company,

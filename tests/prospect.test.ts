@@ -324,6 +324,25 @@ describe('composeEmail + url helpers', () => {
     expect(calculatorSelection(findings)).toEqual(['shopify_no_store', 'email_1_3']);
   });
 
+  // The email names the platform we detected, so the prefilled calculator
+  // has to price that platform. Sending a Squarespace owner to Wix pricing
+  // undercuts the one thing the email has going for it.
+  it('prices the calculator link as the page builder actually detected', () => {
+    const squarespace = buildFindings({ domain: 'x', html: 'static1.squarespace.com' });
+    expect(calculatorSelection(squarespace)).toContain('squarespace');
+    expect(calculatorSelection(squarespace)).not.toContain('wix');
+
+    const godaddy = buildFindings({ domain: 'x', html: 'websitebuilder.godaddy hosted' });
+    expect(calculatorSelection(godaddy)).toContain('godaddy');
+
+    const wix = buildFindings({ domain: 'x', headers: { 'x-wix-request-id': '1' } });
+    expect(calculatorSelection(wix)).toContain('wix');
+
+    // Weebly has no option of its own and borrows the closest published price.
+    const weebly = buildFindings({ domain: 'x', html: 'cdn2.editmysite.com/x' });
+    expect(calculatorSelection(weebly)).toContain('wix');
+  });
+
   it('maps a detected overlay onto its calculator option', () => {
     const findings = buildFindings({
       domain: 'acme.com',

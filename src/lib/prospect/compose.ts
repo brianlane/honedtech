@@ -54,10 +54,12 @@ const FINDING_TO_CALC: Partial<Record<FindingCode, string>> = {
   ada_overlay_widget: 'ada_overlay',
 };
 
+// A finding's own option wins over the per-code default, since one code can
+// cover several platforms at different prices.
 export function calculatorSelection(findings: Finding[]): string[] {
   const ids: string[] = [];
   for (const finding of findings) {
-    const id = FINDING_TO_CALC[finding.code];
+    const id = finding.calcOptionId ?? FINDING_TO_CALC[finding.code];
     if (id && !ids.includes(id)) {
       ids.push(id);
     }

@@ -49,4 +49,9 @@ export interface Finding {
   monthlyWasteUsd: number;
   // Ordering weight; higher shows first in the email.
   severity: number;
+  // Calculator option this specific finding maps to, when the code alone is
+  // not specific enough. One page-builder finding can mean Wix, Squarespace,
+  // or GoDaddy, and the prefilled link has to price whichever one the email
+  // actually names.
+  calcOptionId?: string;
 }

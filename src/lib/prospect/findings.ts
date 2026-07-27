@@ -20,6 +20,15 @@ const WASTE = {
 
 const PAGE_BUILDERS: Platform[] = ['wix', 'squarespace', 'godaddy', 'weebly'];
 
+// Calculator option per builder. Weebly has no option of its own, so it
+// borrows Wix, the closest published price.
+const PLATFORM_CALC_OPTION: Partial<Record<Platform, string>> = {
+  wix: 'wix',
+  squarespace: 'squarespace',
+  godaddy: 'godaddy',
+  weebly: 'wix',
+};
+
 const PLATFORM_LABEL: Record<Platform, string> = {
   shopify: 'Shopify',
   wix: 'Wix',
@@ -69,6 +78,10 @@ export function buildFindings(probe: DomainProbe, now: Date = new Date()): Findi
       headline: `Your site runs on ${PLATFORM_LABEL[platform]}, a monthly page-builder subscription that a lean static site replaces at a fraction of the cost.`,
       monthlyWasteUsd: WASTE.pageBuilder,
       severity: 70,
+      // Priced as the platform we actually detected. Sending a Squarespace
+      // owner to a calculator showing Wix undercuts the one thing the email
+      // has going for it, which is that we looked.
+      calcOptionId: PLATFORM_CALC_OPTION[platform],
     });
   }
 
