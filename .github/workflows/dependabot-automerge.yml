@@ -139,15 +139,22 @@ jobs:
           fi
 
           # Policy gate: no unresolved review threads (e.g. Bugbot / human comments).
-          UNRESOLVED=$(gh api graphql -f query='
-            query($owner:String!, $repo:String!, $pr:Int!) {
+          # Paginated: reading only the first 100 threads would let this merge
+          # over unresolved review sitting on any later page. --paginate emits
+          # one count per page, so they are summed.
+          UNRESOLVED=$(gh api graphql --paginate -f query='
+            query($owner:String!, $repo:String!, $pr:Int!, $endCursor:String) {
               repository(owner:$owner, name:$repo) {
                 pullRequest(number:$pr) {
-                  reviewThreads(first:100) { nodes { isResolved } }
+                  reviewThreads(first:100, after:$endCursor) {
+                    nodes { isResolved }
+                    pageInfo { hasNextPage endCursor }
+                  }
                 }
               }
             }' -F owner="${REPO%/*}" -F repo="${REPO#*/}" -F pr="$PR_NUMBER" \
-            --jq '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)] | length')
+            --jq '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)] | length' \
+            | awk '{ total += $1 } END { print total + 0 }')
           if [ "$UNRESOLVED" -gt 0 ]; then
             echo "PR #$PR_NUMBER has $UNRESOLVED unresolved review thread(s); skipping per merge policy."
             exit 0
