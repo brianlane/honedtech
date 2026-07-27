@@ -30,6 +30,12 @@ export const MIN_LAG_DAYS = 45;
 // pitch stops being credible.
 export const MAX_LAG_DAYS = 270;
 
+// Below this a layoff is not worth anyone's time. A filing for one person is
+// about $16 a month of seats, which is an insulting thing to bring to a
+// company alongside a $2,499 audit fee. Roughly two thirds of in-window
+// filings clear this, so the floor costs no meaningful supply.
+export const MIN_AFFECTED_SEATS = 25;
+
 function text(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim().length > 0
     ? value.trim()
@@ -147,6 +153,60 @@ export function isWithinContactWindow(
   return inLagWindow(daysSinceEffective(record, now), minDays, maxDays);
 }
 
+// One comparable key per employer, so a company that filed in nine states
+// does not become nine prospects.
+function employerKey(employer: string): string {
+  return employer.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+// The filings worth working this run: inside the contact window, big enough
+// to matter, optionally narrowed to given states, one per employer, freshest
+// first.
+//
+// Deduplication is not a nicety. A large employer files separately per site,
+// and Amazon alone accounts for over a hundred filings in a typical window.
+// Without this, one company would exhaust the weekly limit and each duplicate
+// would cost a paid Places lookup. Freshest wins, because the draft claims a
+// specific month and that claim has to be the true one.
+export function selectContactableRecords(
+  records: WarnRecord[],
+  now: Date = new Date(),
+  states: string[] = [],
+): WarnRecord[] {
+  const wanted = new Set(
+    states.map((s) => s.trim().toUpperCase()).filter((s) => s.length > 0),
+  );
+  const scored: { record: WarnRecord; days: number }[] = [];
+
+  for (const record of records) {
+    if (wanted.size > 0 && !wanted.has((record.state ?? '').toUpperCase())) {
+      continue;
+    }
+    if ((record.employeesAffected ?? 0) < MIN_AFFECTED_SEATS) {
+      continue;
+    }
+    const days = daysSinceEffective(record, now);
+    if (!inLagWindow(days, MIN_LAG_DAYS, MAX_LAG_DAYS)) {
+      continue;
+    }
+    scored.push({ record, days });
+  }
+
+  scored.sort((a, b) => a.days - b.days);
+
+  const seen = new Set<string>();
+  const out: WarnRecord[] = [];
+  for (const { record } of scored) {
+    const key = employerKey(record.employer);
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    out.push(record);
+  }
+  return out;
+}
+
 // Conservative monthly spend still billing for seats nobody occupies.
 export function unreclaimedSeatSpend(record: WarnRecord): number {
   const seats = record.employeesAffected ?? 0;
@@ -175,7 +235,7 @@ export function warnSignal(
     return null;
   }
   const seats = record.employeesAffected ?? 0;
-  if (seats <= 0) {
+  if (seats < MIN_AFFECTED_SEATS) {
     return null;
   }
   const where = record.state ? ` in ${record.state}` : '';
