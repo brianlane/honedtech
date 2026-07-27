@@ -262,6 +262,82 @@ export function recordOutcome(
     : next;
 }
 
+// Combines two ledger snapshots without losing anything from either.
+//
+// Cloudflare KV has no compare-and-swap, so every writer does read, modify,
+// write. The scheduled pipeline and the hand-run commands (optout, sent,
+// reply, followup) share one key, and a manual opt-out landing mid-pipeline
+// used to be erased by the pipeline's later write. Silently dropping an
+// opt-out is the worst failure this system has, so writes merge instead of
+// overwrite.
+//
+// Every field is designed to converge: the lists are set unions, first
+// contact is the earliest seen because follow-up timing keys off the original
+// send, and follow-ups and outcomes take the most recent because they are
+// corrections to an earlier state.
+export function mergeLedgers(
+  base: OutreachLedger,
+  incoming: OutreachLedger,
+): OutreachLedger {
+  return {
+    discovered: addDomains(base.discovered, incoming.discovered),
+    contacted: addDomains(base.contacted, incoming.contacted),
+    contactedEmails: addEmails(base.contactedEmails, incoming.contactedEmails),
+    optedOut: addDomains(base.optedOut, incoming.optedOut),
+    contactedAt: mergeTimestamps(base.contactedAt, incoming.contactedAt, 'earliest'),
+    followedUpAt: mergeTimestamps(base.followedUpAt, incoming.followedUpAt, 'latest'),
+    outcomes: mergeOutcomes(base.outcomes, incoming.outcomes),
+  };
+}
+
+function mergeTimestamps(
+  base: Record<string, string>,
+  incoming: Record<string, string>,
+  keep: 'earliest' | 'latest',
+): Record<string, string> {
+  const out = { ...base };
+  for (const [domain, at] of Object.entries(incoming)) {
+    const existing = out[domain];
+    if (!existing) {
+      out[domain] = at;
+      continue;
+    }
+    // Unparseable values lose to a usable one rather than winning by accident.
+    const a = Date.parse(existing);
+    const b = Date.parse(at);
+    if (Number.isNaN(b)) {
+      continue;
+    }
+    if (Number.isNaN(a) || (keep === 'earliest' ? b < a : b > a)) {
+      out[domain] = at;
+    }
+  }
+  return out;
+}
+
+function mergeOutcomes(
+  base: Record<string, { status: OutcomeStatus; at: string }>,
+  incoming: Record<string, { status: OutcomeStatus; at: string }>,
+): Record<string, { status: OutcomeStatus; at: string }> {
+  const out = { ...base };
+  for (const [domain, entry] of Object.entries(incoming)) {
+    const existing = out[domain];
+    if (!existing) {
+      out[domain] = entry;
+      continue;
+    }
+    const a = Date.parse(existing.at);
+    const b = Date.parse(entry.at);
+    if (Number.isNaN(b)) {
+      continue;
+    }
+    if (Number.isNaN(a) || b > a) {
+      out[domain] = entry;
+    }
+  }
+  return out;
+}
+
 export interface FollowUpDue {
   domain: string;
   contactedAt: string;

@@ -22,12 +22,12 @@ import {
   parseLedger,
   recordContacted,
   recordDiscovered,
-  serializeLedger,
 } from '../src/lib/prospect/ledger';
 import type { Finding } from '../src/lib/prospect/types';
 import { discoverProspects } from './lib/places';
 import { probeDomain } from './lib/probe';
-import { kvGet, kvPut } from './lib/kv';
+import { kvGet } from './lib/kv';
+import { saveLedgerMerged } from './lib/ledger-io';
 import { polishWithGemini } from './lib/polish';
 
 const LEDGER_KEY = 'outreach-ledger';
@@ -166,7 +166,9 @@ async function main() {
     );
   }
 
-  await kvPut(cfToken, namespaceId, LEDGER_KEY, serializeLedger(updated));
+  // Merged rather than overwritten: a hand-run optout or reply landing while
+  // this pipeline was working must not be erased by our older snapshot.
+  await saveLedgerMerged(cfToken, namespaceId, LEDGER_KEY, updated);
   console.log(
     `Ledger updated: ${updated.discovered.length} discovered, ` +
       `${updated.contactedEmails.length} address(es) emailed.`,

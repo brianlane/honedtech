@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { env } from 'cloudflare:workers';
-import { POST } from '../src/pages/api/contact';
+import { POST, headerSafe } from '../src/pages/api/contact';
 
 type PostContext = Parameters<typeof POST>[0];
 
@@ -51,7 +51,47 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+describe('headerSafe', () => {
+  it('strips the line breaks that would end the header', () => {
+    expect(headerSafe('Acme\r\nBcc: victim@example.com')).toBe(
+      'Acme Bcc: victim@example.com',
+    );
+    expect(headerSafe('a\nb')).toBe('a b');
+  });
+
+  it('removes other control characters and collapses whitespace', () => {
+    expect(headerSafe('Acme\u0000\u0007  \t Co')).toBe('Acme Co');
+  });
+
+  it('trims and caps the length', () => {
+    expect(headerSafe('  padded  ')).toBe('padded');
+    expect(headerSafe('x'.repeat(200))).toHaveLength(120);
+    expect(headerSafe('abcdef', 3)).toBe('abc');
+  });
+
+  it('leaves an ordinary subject alone', () => {
+    expect(headerSafe('Audit request: Acme (Jane)')).toBe('Audit request: Acme (Jane)');
+  });
+});
+
 describe('POST /api/contact', () => {
+  it('cannot be used to inject extra email headers', async () => {
+    const res = await POST(
+      makeContext({
+        ...VALID_FIELDS,
+        name: 'Jane\r\nBcc: attacker@evil.com',
+        business: 'Acme\nX-Spoof: yes',
+      }),
+    );
+    expect(res.status).toBe(303);
+    const sent = vi.mocked(env.EMAIL.send).mock.calls[0][0] as Record<string, unknown>;
+    expect(sent.subject).not.toContain('\n');
+    expect(sent.subject).not.toContain('\r');
+    expect(sent.subject).toBe(
+      'Audit request: Acme X-Spoof: yes (Jane Bcc: attacker@evil.com)',
+    );
+  });
+
   it('rejects a body that is not form data', async () => {
     const request = new Request('http://localhost/api/contact', {
       method: 'POST',

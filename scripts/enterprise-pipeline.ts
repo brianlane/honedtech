@@ -29,12 +29,12 @@ import {
   parseLedger,
   recordContacted,
   recordDiscovered,
-  serializeLedger,
 } from '../src/lib/prospect/ledger';
 import { fetchWarnRecords } from './lib/warn-source';
 import { resolveCompanyDomain } from './lib/places';
 import { fetchJobPostings } from './lib/ats-fetch';
-import { kvGet, kvPut } from './lib/kv';
+import { kvGet } from './lib/kv';
+import { saveLedgerMerged } from './lib/ledger-io';
 
 // Deliberately separate from the SMB "outreach-ledger" so the two tracks never
 // suppress each other. A local plumber and a 400-person employer are different
@@ -198,7 +198,8 @@ async function main() {
     drafts.map((d) => d.domain),
   );
 
-  await kvPut(cfToken, namespaceId, LEDGER_KEY, serializeLedger(updated));
+  // Merged rather than overwritten, same reasoning as the SMB pipeline.
+  await saveLedgerMerged(cfToken, namespaceId, LEDGER_KEY, updated);
   console.log(
     `Ledger updated: ${updated.discovered.length} discovered, ${updated.contacted.length} contacted.`,
   );

@@ -25,6 +25,24 @@ export async function kvGet(
   return res.text();
 }
 
+// Used to undo a speculative write. A missing key is already the desired
+// end state, so a 404 counts as success.
+export async function kvDelete(
+  token: string,
+  namespaceId: string,
+  key: string,
+): Promise<void> {
+  const res = await fetch(`${base(namespaceId)}/values/${encodeURIComponent(key)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok && res.status !== 404) {
+    throw new Error(
+      `KV delete failed (${res.status}): ${(await res.text()).slice(0, 200)}`,
+    );
+  }
+}
+
 export async function kvPut(
   token: string,
   namespaceId: string,
