@@ -63,6 +63,11 @@ export async function fetchWarnRecords(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
+  // A failed fetch throws rather than returning nothing. Returning an empty
+  // list made a broken URL, a network blip, or an upstream outage look exactly
+  // like a quiet filing week: the pipeline announced it had nothing to work
+  // with and exited successfully, so the job stayed green while the whole
+  // source was down.
   let payload: unknown;
   try {
     const res = await fetch(url, {
@@ -70,13 +75,11 @@ export async function fetchWarnRecords(
       headers: apiKey ? { 'X-API-Key': apiKey } : {},
     });
     if (!res.ok) {
-      console.warn(`  ! WARN source returned ${res.status}`);
-      return [];
+      throw new Error(
+        `WARN source ${url} returned ${res.status}: ${(await res.text()).slice(0, 200)}`,
+      );
     }
     payload = await res.json();
-  } catch (err) {
-    console.warn(`  ! WARN fetch failed: ${(err as Error).message}`);
-    return [];
   } finally {
     clearTimeout(timer);
   }
