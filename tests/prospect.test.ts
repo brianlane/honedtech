@@ -30,6 +30,7 @@ import {
   normalizeEmail,
   parseDomainList,
   parseLedger,
+  parseLedgerResult,
   partitionProspects,
   recordContacted,
   recordDiscovered,
@@ -408,6 +409,26 @@ describe('ledger', () => {
 
   it('parses malformed JSON to an empty ledger instead of throwing', () => {
     expect(parseLedger('{not json')).toEqual(EMPTY);
+  });
+
+  // Read-only callers can live with an empty ledger, but a writer must not:
+  // merging empty over a real ledger discards every suppression it holds. The
+  // difference between "no key yet" and "unreadable" is what tells them apart.
+  describe('parseLedgerResult', () => {
+    it('does not call an absent or blank value corrupt', () => {
+      expect(parseLedgerResult('')).toEqual({ ledger: EMPTY, corrupt: false });
+      expect(parseLedgerResult('   ')).toEqual({ ledger: EMPTY, corrupt: false });
+    });
+
+    it('flags a value that exists but does not parse', () => {
+      expect(parseLedgerResult('{not json')).toEqual({ ledger: EMPTY, corrupt: true });
+    });
+
+    it('reports a good value as intact', () => {
+      const result = parseLedgerResult(JSON.stringify({ optedOut: ['a.com'] }));
+      expect(result.corrupt).toBe(false);
+      expect(result.ledger.optedOut).toEqual(['a.com']);
+    });
   });
 
   it('reads a ledger written before contactedEmails existed', () => {

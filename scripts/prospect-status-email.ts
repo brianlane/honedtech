@@ -15,9 +15,8 @@ import {
   serializeSnapshot,
   snapshotChanged,
 } from '../src/lib/prospect/status';
-import { parseLedger } from '../src/lib/prospect/ledger';
 import { kvDelete, kvGet, kvPut } from './lib/kv';
-import { requiredEnv } from './lib/ledger-io';
+import { readLedgerStrict, requiredEnv } from './lib/ledger-io';
 
 const LEDGER_KEY = 'outreach-ledger';
 const SNAPSHOT_KEY = 'status-snapshot';
@@ -53,7 +52,9 @@ async function main() {
   const force = process.env.FORCE_STATUS === '1';
   const dryRun = process.env.DRY_RUN === '1';
 
-  const ledger = parseLedger(await kvGet(token, namespaceId, LEDGER_KEY));
+  // Strict, because a report built from a ledger that failed to parse would
+  // read as "nothing has happened" rather than as the problem it is.
+  const ledger = await readLedgerStrict(token, namespaceId, LEDGER_KEY);
   // Kept in raw form as well, because rolling back a failed send has to write
   // exactly what was there before.
   const previousRaw = await kvGet(token, namespaceId, SNAPSHOT_KEY);

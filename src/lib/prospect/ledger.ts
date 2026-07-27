@@ -136,26 +136,42 @@ function emailArray(value: unknown): string[] {
     .filter((e) => e.includes('@'));
 }
 
-// Tolerant of missing, empty, or malformed values so a corrupt ledger degrades
-// to "contact nobody twice that we can prove" rather than crashing the run.
-export function parseLedger(text: string): OutreachLedger {
+export interface LedgerReadResult {
+  ledger: OutreachLedger;
+  // True when there was text but it did not parse. An absent or blank key is
+  // NOT corrupt: that is simply the first run.
+  corrupt: boolean;
+}
+
+// Tolerant of missing, empty, or malformed values, but it reports whether the
+// value was unreadable. Callers that only read can carry on with an empty
+// ledger; callers that are about to WRITE must not, because an empty ledger
+// merged over a real one silently discards every opt-out it held.
+export function parseLedgerResult(text: string): LedgerReadResult {
   if (!text.trim()) {
-    return { ...EMPTY_LEDGER };
+    return { ledger: { ...EMPTY_LEDGER }, corrupt: false };
   }
   try {
     const raw = JSON.parse(text) as Record<string, unknown>;
     return {
-      discovered: domainArray(raw.discovered),
-      contacted: domainArray(raw.contacted),
-      contactedEmails: emailArray(raw.contactedEmails),
-      optedOut: domainArray(raw.optedOut),
-      contactedAt: timestampMap(raw.contactedAt),
-      followedUpAt: timestampMap(raw.followedUpAt),
-      outcomes: outcomeMap(raw.outcomes),
+      ledger: {
+        discovered: domainArray(raw.discovered),
+        contacted: domainArray(raw.contacted),
+        contactedEmails: emailArray(raw.contactedEmails),
+        optedOut: domainArray(raw.optedOut),
+        contactedAt: timestampMap(raw.contactedAt),
+        followedUpAt: timestampMap(raw.followedUpAt),
+        outcomes: outcomeMap(raw.outcomes),
+      },
+      corrupt: false,
     };
   } catch {
-    return { ...EMPTY_LEDGER };
+    return { ledger: { ...EMPTY_LEDGER }, corrupt: true };
   }
+}
+
+export function parseLedger(text: string): OutreachLedger {
+  return parseLedgerResult(text).ledger;
 }
 
 export function serializeLedger(ledger: OutreachLedger): string {
