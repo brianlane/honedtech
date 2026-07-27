@@ -19,7 +19,10 @@ async function main() {
   console.log('\nOutreach status');
   console.log('---------------');
   console.log(`  Discovered:      ${stats.discovered}`);
-  console.log(`  Contacted:       ${stats.contacted}`);
+  console.log(`  Drafted:         ${stats.drafted}`);
+  console.log(`  Sent:            ${stats.sent}`);
+  console.log(`  Drafts pending:  ${stats.pendingDrafts}`);
+  console.log(`  Skipped:         ${stats.skipped}`);
   console.log(`  Addresses used:  ${stats.emailed}`);
   console.log(`  Awaiting reply:  ${stats.awaitingReply}`);
   console.log(`  Replied:         ${stats.replied}`);
@@ -27,16 +30,27 @@ async function main() {
   console.log(`  Declined:        ${stats.declined}`);
   console.log(`  Bounced:         ${stats.bounced}`);
   console.log(`  Opted out:       ${stats.optedOut}`);
-  console.log(`  Reply rate:      ${stats.replyRate}%`);
+  console.log(`  Reply rate:      ${stats.replyRate}% of sent`);
 
   if (byVertical.length > 0) {
-    console.log('\nBy vertical (contacted / replied / booked):');
+    console.log('\nBy vertical (drafted / sent / replied / booked):');
     for (const v of byVertical) {
-      console.log(`  ${v.vertical}: ${v.contacted} / ${v.replied} / ${v.booked}`);
+      console.log(
+        `  ${v.vertical}: ${v.drafted} / ${v.sent} / ${v.replied} / ${v.booked}`,
+      );
     }
   }
 
-  if (stats.contacted >= 20 && stats.replyRate < 3) {
+  if (stats.pendingDrafts > 0) {
+    console.log(
+      `\n  ${stats.pendingDrafts} draft(s) are waiting on you in the digest emails.\n` +
+        '  After sending one: npm run prospect:sent -- <domain> <address>\n' +
+        '  Passing on one:    npm run prospect:skip -- <domain>',
+    );
+  }
+
+  // Gated on sent, not drafted: an unsent draft says nothing about the pitch.
+  if (stats.sent >= 20 && stats.replyRate < 3) {
     console.log(
       '\n  Reply rate is under 3%. Per the launch kit, tighten the specificity\n' +
         '  of the findings before increasing volume.',
@@ -50,7 +64,7 @@ async function main() {
 
   console.log(`\nFollow-ups due (${due.length}), one nudge each, then stop:`);
   for (const item of due) {
-    console.log(`  ${item.domain} (contacted ${item.daysAgo} days ago)`);
+    console.log(`  ${item.domain} (sent ${item.daysAgo} days ago)`);
   }
   console.log('\nAfter sending, mark it: npm run prospect:followup -- <domain>\n');
 }

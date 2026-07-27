@@ -22,7 +22,8 @@ interface StatusPayload {
 
 interface VerticalRow {
   vertical: string;
-  contacted: number;
+  drafted: number;
+  sent: number;
   replied: number;
   booked: number;
 }
@@ -34,23 +35,30 @@ function isVerticalRow(value: unknown): value is VerticalRow {
   const row = value as Partial<VerticalRow>;
   return (
     typeof row.vertical === 'string' &&
-    typeof row.contacted === 'number' &&
+    typeof row.drafted === 'number' &&
+    typeof row.sent === 'number' &&
     typeof row.replied === 'number' &&
     typeof row.booked === 'number'
   );
 }
 
+// Drafted and sent are named apart because they are different events: the
+// pipeline drafts, a human sends. Collapsing them into one "Contacted" line is
+// what let a pile of unsent drafts read as prospects who had heard from us.
 const STAT_LABELS: Record<string, string> = {
   discovered: 'Discovered',
-  contacted: 'Contacted',
-  emailed: 'Addresses emailed',
+  drafted: 'Drafted (in your review inbox)',
+  sent: 'Sent by hand from Gmail',
+  pendingDrafts: 'Drafts pending your send',
+  skipped: 'Skipped',
+  emailed: 'Addresses in drafts',
   awaitingReply: 'Awaiting reply',
   replied: 'Replied',
   booked: 'Booked',
   declined: 'Declined',
   bounced: 'Bounced',
   optedOut: 'Opted out',
-  replyRate: 'Reply rate',
+  replyRate: 'Reply rate (of sent)',
 };
 
 export const POST: APIRoute = async ({ request }) => {
@@ -86,12 +94,25 @@ export const POST: APIRoute = async ({ request }) => {
   });
 
   const verticalLines = byVertical.map(
-    (v) => `${v.vertical}: ${v.contacted} contacted, ${v.replied} replied, ${v.booked} booked`,
+    (v) =>
+      `${v.vertical}: ${v.drafted} drafted, ${v.sent} sent, ` +
+      `${v.replied} replied, ${v.booked} booked`,
   );
+
+  // Said outright rather than left to be inferred from a counter, because a
+  // pile of drafts nobody has sent is the one state where every other number
+  // in this email looks like progress and none of it has reached a prospect.
+  const pending = typeof stats.pendingDrafts === 'number' ? stats.pendingDrafts : 0;
+  const pendingNote =
+    pending > 0
+      ? `${pending} draft(s) are still waiting in your digest emails. Nothing reaches a ` +
+        'prospect until you send it from Gmail, then log it with npm run prospect:sent.'
+      : '';
 
   const text = [
     'What changed this week:',
     ...changes.map((c) => `- ${c}`),
+    ...(pendingNote ? ['', pendingNote] : []),
     '',
     'Current totals:',
     ...statLines.map((l) => `- ${l}`),
@@ -108,7 +129,9 @@ export const POST: APIRoute = async ({ request }) => {
   const html = [
     '<h2>What changed this week</h2><ul>',
     ...changes.map((c) => `<li>${escapeHtml(c)}</li>`),
-    '</ul><h3>Current totals</h3><ul>',
+    '</ul>',
+    pendingNote ? `<p><strong>${escapeHtml(pendingNote)}</strong></p>` : '',
+    '<h3>Current totals</h3><ul>',
     ...statLines.map((l) => `<li>${escapeHtml(l)}</li>`),
     '</ul>',
     verticalLines.length

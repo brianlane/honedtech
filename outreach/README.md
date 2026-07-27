@@ -30,34 +30,53 @@ Google Places, probes each site, composes drafts, and emails a digest to the
 verified inbox. Nothing is sent to a prospect.
 
 Your job is the last mile: read the digest, sanity-check each draft, send from
-Gmail with send-as `brian@honedtech.com`, and reply-log anyone who opts out.
+Gmail with send-as `brian@honedtech.com`, log the send with `prospect:sent`,
+and reply-log anyone who opts out.
 
 State lives in Cloudflare KV (`OUTREACH` namespace, key `outreach-ledger`), not
-in local CSVs, because the scheduled runner is ephemeral. The ledger tracks
-discovered, contacted, and opted-out domains so nothing is ever surfaced twice.
+in local CSVs, because the scheduled runner is ephemeral.
+
+### Drafted is not sent
+
+The ledger keeps these apart, because only one of them is outreach:
+
+| | Recorded by | Means |
+| --- | --- | --- |
+| **Drafted** | the pipeline, automatically | a draft for this domain is sitting in your review inbox |
+| **Sent** | you, with `prospect:sent` | the email actually left Gmail |
+| **Skipped** | you, with `prospect:skip` | you read the draft and passed on it |
+
+Everything that assumes a prospect has heard from us keys off **sent**:
+follow-up timing, the reply rate, and the awaiting-reply count. So a drafted
+domain you never send is never nudged and never counted as silence from the
+market, and an empty Gmail sent folder alongside "Drafted: 15" is the system
+telling the truth rather than a bug.
+
+Log every send, including the digest's own drafts. The pipeline knows it
+drafted them; it cannot know you sent them:
+
+```bash
+npm run prospect:sent -- acme.com owner@acme.com
+npm run prospect:sent -- owner@acme.com     # an address implies its domain
+npm run prospect:skip -- acme.com           # read it, decided against it
+```
 
 ### Nobody gets emailed twice
 
-Suppression works on two axes, because one address can front several
-businesses (a shared owner, or the agency running both sites):
+Suppression is deliberately wider than sending, and keys off **drafted**: a
+domain that reached the digest once is finished with, whether you sent it,
+skipped it, or left it sitting. It works on two axes, because one address can
+front several businesses (a shared owner, or the agency running both sites):
 
-- **By domain**: anything discovered, contacted, or opted out is never
+- **By domain**: anything discovered, drafted, skipped, or opted out is never
   surfaced again.
 - **By address**: every address a digest was built for is recorded, and a
   later prospect whose scraped email matches is skipped even if its domain is
   brand new. Duplicates inside a single batch are caught too.
 
-The scheduled run records this automatically once the digest is delivered. If
-you email someone by hand or from another list, log it so the pipeline knows:
-
-```bash
-npm run prospect:sent -- acme.com owner@acme.com
-npm run prospect:sent -- owner@acme.com     # an address implies its domain
-```
-
 ### Follow-ups and outcomes
 
-The digest lists anyone contacted five or more days ago with no reply on
+The digest lists anyone **sent to** five or more days ago with no reply on
 record, capped at three weeks so the list never fills with stale prospects.
 One nudge each is the policy, so marking it removes them permanently:
 
@@ -80,11 +99,12 @@ Check the numbers any time:
 npm run prospect:status
 ```
 
-The status includes a per-vertical breakdown (contacted / replied / booked),
-built from the vertical each domain was discovered under. That breakdown, not
-the mix of any one digest, is the evidence for whether a trade deserves more
-attention. Domains contacted before verticals were tracked show as
-`(unknown)`.
+It reports drafted, sent, drafts pending your send, and skipped separately, and
+the reply rate is a share of what was sent. There is also a per-vertical
+breakdown (drafted / sent / replied / booked), built from the vertical each
+domain was discovered under. That breakdown, not the mix of any one digest, is
+the evidence for whether a trade deserves more attention. Domains drafted
+before verticals were tracked show as `(unknown)`.
 
 ### Weekly status email
 
@@ -93,11 +113,12 @@ A separate job ([status.yml](../.github/workflows/status.yml)) runs Mondays at
 since the previous report**. A week where nothing moved sends nothing, so the
 email keeps meaning something when it arrives.
 
-The email leads with what changed ("Contacted: 3 to 6 (+3)", "Newly due for
-follow-up: acme.com") and then lists current totals. Comparison state lives in
-KV under `status-snapshot`, separate from the ledger. Note that a prospect
-simply ageing from 7 to 8 days does not count as a change; becoming newly due
-does.
+The email leads with what changed ("Sent: 3 to 6 (+3)", "Newly due for
+follow-up: acme.com") and then lists current totals. When drafts are still
+waiting on you it says so in as many words, so a week of pure drafting never
+reads as a week of outreach. Comparison state lives in KV under
+`status-snapshot`, separate from the ledger. Note that a prospect simply ageing
+from 7 to 8 days does not count as a change; becoming newly due does.
 
 Force a send, or preview one, with:
 

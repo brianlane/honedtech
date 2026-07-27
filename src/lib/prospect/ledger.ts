@@ -52,16 +52,30 @@ export function isOutcomeStatus(value: string): value is OutcomeStatus {
   return (OUTCOME_STATUSES as readonly string[]).includes(value);
 }
 
+// Drafting and sending are two different events, and only the second one is
+// outreach. The pipeline drafts and delivers the digest to our own inbox; a
+// human then sends each draft by hand from Gmail. The `contacted*` fields
+// record the drafting, `sentAt` records the sending, and everything that
+// depends on a prospect having actually heard from us keys off `sentAt`.
 export interface OutreachLedger {
   discovered: string[];
+  // Domains a draft was composed for. Suppression keys off this, because a
+  // domain we drafted must not be surfaced and drafted a second time.
   contacted: string[];
-  // Addresses we have already emailed. Tracked separately from domains
+  // Addresses a draft was addressed to. Tracked separately from domains
   // because one address can front several businesses (a shared owner or the
   // agency that runs both sites), and nobody should get two cold emails.
   contactedEmails: string[];
   optedOut: string[];
-  // domain -> ISO timestamp of first contact, which drives follow-up timing.
+  // domain -> ISO timestamp the draft was composed.
   contactedAt: Record<string, string>;
+  // domain -> ISO timestamp the email actually left Gmail, recorded by hand
+  // with prospect:sent. Follow-up timing keys off this, so a draft that was
+  // never sent is never nudged.
+  sentAt: Record<string, string>;
+  // Drafts deliberately not sent. Recorded so they stop counting as pending
+  // work and never reach the follow-up list.
+  skipped: string[];
   // domain -> ISO timestamp the single allowed follow-up went out.
   followedUpAt: Record<string, string>;
   // domain -> what came back, which closes the loop and stops follow-ups.
@@ -78,6 +92,8 @@ const EMPTY_LEDGER: OutreachLedger = {
   contactedEmails: [],
   optedOut: [],
   contactedAt: {},
+  sentAt: {},
+  skipped: [],
   followedUpAt: {},
   outcomes: {},
   verticals: {},
@@ -167,6 +183,8 @@ export function parseLedgerResult(text: string): LedgerReadResult {
         contactedEmails: emailArray(raw.contactedEmails),
         optedOut: domainArray(raw.optedOut),
         contactedAt: domainStringMap(raw.contactedAt),
+        sentAt: domainStringMap(raw.sentAt),
+        skipped: domainArray(raw.skipped),
         followedUpAt: domainStringMap(raw.followedUpAt),
         outcomes: outcomeMap(raw.outcomes),
         verticals: domainStringMap(raw.verticals),
@@ -225,11 +243,11 @@ export function recordDiscovered(
   return { ...ledger, discovered: addDomains(ledger.discovered, domains) };
 }
 
-// Marks domains and addresses as emailed. Both are also marked discovered so
+// Marks domains and addresses as drafted. Both are also marked discovered so
 // the pair stays suppressed even if the discovered list is rebuilt. The first
-// contact timestamp and vertical are never overwritten, because follow-up
-// timing and outcome attribution key off the original send, not the most
-// recent bookkeeping.
+// draft timestamp and the vertical are never overwritten, because outcome
+// attribution keys off the original discovery, not the most recent
+// bookkeeping.
 export function recordContacted(
   ledger: OutreachLedger,
   domains: string[],
@@ -259,6 +277,42 @@ export function recordContacted(
     discovered: addDomains(ledger.discovered, domains),
     contactedAt,
     verticals,
+  };
+}
+
+// Marks that the email genuinely went out from Gmail, which is the event that
+// starts the follow-up clock and the only one the reply rate is measured
+// against. Also records the draft side, so a domain emailed by hand that the
+// pipeline never drafted is still suppressed from here on.
+export function recordSent(
+  ledger: OutreachLedger,
+  domains: string[],
+  emails: string[] = [],
+  now: Date = new Date(),
+): OutreachLedger {
+  const sentAt = { ...ledger.sentAt };
+  for (const d of domains) {
+    const bare = normalizeDomain(d);
+    // First send wins: a second log of the same domain is bookkeeping, not a
+    // second cold email, and follow-up timing keys off the original.
+    if (bare && !sentAt[bare]) {
+      sentAt[bare] = now.toISOString();
+    }
+  }
+  return { ...recordContacted(ledger, domains, emails, now), sentAt };
+}
+
+// Records a draft passed over rather than sent. It stays suppressed, because
+// it was already drafted once and re-drafting it would spend a slot on a
+// prospect already judged not worth one.
+export function recordSkipped(
+  ledger: OutreachLedger,
+  domains: string[],
+): OutreachLedger {
+  return {
+    ...ledger,
+    skipped: addDomains(ledger.skipped, domains),
+    discovered: addDomains(ledger.discovered, domains),
   };
 }
 
@@ -306,10 +360,10 @@ export function recordOutcome(
 // opt-out is the worst failure this system has, so writes merge instead of
 // overwrite.
 //
-// Every field is designed to converge: the lists are set unions, first
-// contact is the earliest seen because follow-up timing keys off the original
-// send, and follow-ups and outcomes take the most recent because they are
-// corrections to an earlier state.
+// Every field is designed to converge: the lists are set unions, the draft
+// and send timestamps are the earliest seen because follow-up timing keys off
+// the original send, and follow-ups and outcomes take the most recent because
+// they are corrections to an earlier state.
 export function mergeLedgers(
   base: OutreachLedger,
   incoming: OutreachLedger,
@@ -320,6 +374,8 @@ export function mergeLedgers(
     contactedEmails: addEmails(base.contactedEmails, incoming.contactedEmails),
     optedOut: addDomains(base.optedOut, incoming.optedOut),
     contactedAt: mergeTimestamps(base.contactedAt, incoming.contactedAt, 'earliest'),
+    sentAt: mergeTimestamps(base.sentAt, incoming.sentAt, 'earliest'),
+    skipped: addDomains(base.skipped, incoming.skipped),
     followedUpAt: mergeTimestamps(base.followedUpAt, incoming.followedUpAt, 'latest'),
     outcomes: mergeOutcomes(base.outcomes, incoming.outcomes),
     // First writer wins, same spirit as the earliest contact timestamp: the
@@ -378,13 +434,17 @@ function mergeOutcomes(
 
 export interface FollowUpDue {
   domain: string;
-  contactedAt: string;
+  sentAt: string;
   daysAgo: number;
 }
 
-// Who is owed the single allowed follow-up: contacted at least `minDays` ago,
-// no reply recorded, no follow-up sent yet, and not opted out. The upper bound
-// keeps the list from filling with stale prospects nobody will chase.
+// Who is owed the single allowed follow-up: sent to at least `minDays` ago,
+// no reply recorded, no follow-up sent yet, and not opted out. Reading from
+// `sentAt` rather than `contactedAt` is the point: nudging somebody about an
+// email that only ever existed as a draft in our own inbox is nonsense.
+//
+// The upper bound keeps the list from filling with stale prospects nobody
+// will chase.
 export function dueForFollowUp(
   ledger: OutreachLedger,
   now: Date = new Date(),
@@ -394,7 +454,7 @@ export function dueForFollowUp(
   const optedOut = new Set(ledger.optedOut);
   const due: FollowUpDue[] = [];
 
-  for (const [domain, at] of Object.entries(ledger.contactedAt)) {
+  for (const [domain, at] of Object.entries(ledger.sentAt)) {
     if (optedOut.has(domain) || ledger.outcomes[domain] || ledger.followedUpAt[domain]) {
       continue;
     }
@@ -404,7 +464,7 @@ export function dueForFollowUp(
     }
     const daysAgo = Math.floor((now.getTime() - sent) / 86_400_000);
     if (daysAgo >= minDays && daysAgo <= maxDays) {
-      due.push({ domain, contactedAt: at, daysAgo });
+      due.push({ domain, sentAt: at, daysAgo });
     }
   }
 
@@ -413,7 +473,13 @@ export function dueForFollowUp(
 
 export interface LedgerStats {
   discovered: number;
-  contacted: number;
+  // Drafts composed and delivered to the review inbox. Emphatically not the
+  // number of prospects who heard from us.
+  drafted: number;
+  sent: number;
+  skipped: number;
+  // Drafted, not sent, not skipped: the queue still waiting on a human.
+  pendingDrafts: number;
   emailed: number;
   awaitingReply: number;
   replied: number;
@@ -421,7 +487,8 @@ export interface LedgerStats {
   declined: number;
   bounced: number;
   optedOut: number;
-  // Share of contacted domains that produced any reply, as a percentage.
+  // Share of SENT domains that produced any reply, as a percentage. Measuring
+  // it against drafts instead would read unsent mail as market silence.
   replyRate: number;
 }
 
@@ -430,47 +497,57 @@ export function ledgerStats(ledger: OutreachLedger): LedgerStats {
   for (const { status } of Object.values(ledger.outcomes)) {
     counts[status] += 1;
   }
-  const contacted = ledger.contacted.length;
+  const sentDomains = Object.keys(ledger.sentAt);
+  const sent = sentDomains.length;
+  const skipped = new Set(ledger.skipped);
   // A booking is a reply too, so both count toward the rate.
   const anyReply = counts.replied + counts.booked;
   return {
     discovered: ledger.discovered.length,
-    contacted,
+    drafted: ledger.contacted.length,
+    sent,
+    skipped: skipped.size,
+    pendingDrafts: ledger.contacted.filter(
+      (d) => !ledger.sentAt[d] && !skipped.has(d),
+    ).length,
     emailed: ledger.contactedEmails.length,
-    awaitingReply: Math.max(contacted - Object.keys(ledger.outcomes).length, 0),
+    awaitingReply: sentDomains.filter((d) => !ledger.outcomes[d]).length,
     ...counts,
     optedOut: ledger.optedOut.length,
-    replyRate: contacted === 0 ? 0 : Math.round((anyReply / contacted) * 1000) / 10,
+    replyRate: sent === 0 ? 0 : Math.round((anyReply / sent) * 1000) / 10,
   };
 }
 
 export interface VerticalStats {
   vertical: string;
-  contacted: number;
+  drafted: number;
+  sent: number;
   replied: number;
   booked: number;
 }
 
 // Outcomes grouped by the vertical each domain was discovered under, which is
 // the evidence that separates "this trade responds" from "this trade is what
-// discovery happened to be searching that week". Domains contacted before
-// verticals were tracked group under "(unknown)".
+// discovery happened to be searching that week". Drafted and sent are both
+// carried, since a trade can only be judged on the mail that went out.
+// Domains drafted before verticals were tracked group under "(unknown)".
 export function verticalBreakdown(ledger: OutreachLedger): VerticalStats[] {
   const byVertical = new Map<string, VerticalStats>();
   for (const domain of ledger.contacted) {
     const vertical = ledger.verticals[domain] ?? '(unknown)';
     let entry = byVertical.get(vertical);
     if (!entry) {
-      entry = { vertical, contacted: 0, replied: 0, booked: 0 };
+      entry = { vertical, drafted: 0, sent: 0, replied: 0, booked: 0 };
       byVertical.set(vertical, entry);
     }
-    entry.contacted += 1;
+    entry.drafted += 1;
+    if (ledger.sentAt[domain]) entry.sent += 1;
     const status = ledger.outcomes[domain]?.status;
     if (status === 'replied') entry.replied += 1;
     if (status === 'booked') entry.booked += 1;
   }
   return [...byVertical.values()].sort(
-    (a, b) => b.contacted - a.contacted || a.vertical.localeCompare(b.vertical),
+    (a, b) => b.drafted - a.drafted || a.vertical.localeCompare(b.vertical),
   );
 }
 

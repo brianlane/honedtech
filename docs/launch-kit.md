@@ -23,6 +23,10 @@ The pipeline runs itself; you handle judgment and sending.
 - Open the outreach digest email waiting in your inbox. It carries the new
   drafts and any follow-ups that came due, so it is the only thing to read.
 - Review every draft, delete any finding that looks wrong, send from Gmail
+- Log each send, which is what starts the follow-up clock and feeds the reply
+  rate: `npm run prospect:sent -- theirdomain.com owner@theirdomain.com`
+- Passed on a draft? Say so, and it stops counting as pending work:
+  `npm run prospect:skip -- theirdomain.com`
 - Send the listed follow-ups, then mark each one:
   `npm run prospect:followup -- theirdomain.com`
 - Record what comes back, which stops follow-ups and feeds your reply rate:
@@ -41,8 +45,9 @@ The pipeline runs itself; you handle judgment and sending.
   npm run prospect:sent -- owner@theirdomain.com
   ```
 
-The discovered domains are recorded automatically, so nothing is re-contacted
-even if you never touch a file.
+Drafted domains are recorded automatically, so nothing is ever drafted twice
+even if you never touch a file. Sending is the part the pipeline cannot see:
+until you log it, the ledger counts a draft as drafted and nothing more.
 
 Consistency beats volume. Twenty honest, specific emails a day is a real
 pipeline. Two hundred generic ones gets your domain burned.
@@ -61,9 +66,9 @@ pipeline. Two hundred generic ones gets your domain burned.
 - **One follow-up maximum.** If no reply after 5 to 7 days, send a two-line
   nudge, then stop and move on.
 
-You never have to remember who is owed a nudge. Anyone contacted five or more
-days ago with no recorded reply appears in the digest automatically, and drops
-off once you mark the follow-up or record an outcome.
+You never have to remember who is owed a nudge. Anyone you logged a send to
+five or more days ago with no recorded reply appears in the digest
+automatically, and drops off once you mark the follow-up or record an outcome.
 
 ### Follow-up template (send once, 5 to 7 days later)
 
@@ -165,9 +170,10 @@ shows up in Cloudflare Web Analytics (Analytics and Logs, Web Analytics).
 
 ## What to measure in the first 90 days
 
-Run `npm run prospect:status` for the live numbers: contacted, awaiting reply,
-replied, booked, declined, bounced, and your reply rate. It also lists any
-follow-ups due.
+Run `npm run prospect:status` for the live numbers: drafted, sent, drafts still
+pending your send, skipped, awaiting reply, replied, booked, declined, bounced,
+and your reply rate as a share of what was sent. It also lists any follow-ups
+due.
 
 You also get these by email every Monday morning, but only when something
 changed since the previous week. A quiet week stays silent on purpose.
@@ -179,4 +185,5 @@ changed since the previous week. A quiet week stays silent on purpose.
 
 If reply rate is under 3%, the findings are too generic before the volume is
 too low. Fix specificity first. The status command flags this for you once you
-have contacted at least 20 businesses.
+have sent to at least 20 businesses. Drafts you never sent do not count toward
+that bar, since they are not evidence about the pitch.

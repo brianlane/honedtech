@@ -59,6 +59,23 @@ export function snapshotChanged(
   return serializeSnapshot(previous) !== serializeSnapshot(next);
 }
 
+// `drafted` was stored as `contacted` before drafting and sending were told
+// apart, so the old name is read as a fallback. Without it the first report
+// after the change would call every previously drafted domain new this week.
+const RENAMED_STATS: Partial<Record<keyof LedgerStats, string>> = {
+  drafted: 'contacted',
+};
+
+// A stored snapshot is JSON from an earlier version of this file, so a counter
+// added since it was written is simply absent. Reading it as 0 makes the first
+// report after a shape change diff cleanly instead of saying "undefined to 15".
+function statValue(stats: LedgerStats, key: keyof LedgerStats): number {
+  const loose = stats as unknown as Record<string, number | undefined>;
+  const legacyKey = RENAMED_STATS[key];
+  const value = loose[key] ?? (legacyKey ? loose[legacyKey] : undefined);
+  return typeof value === 'number' ? value : 0;
+}
+
 // Human-readable diff for the email, so the message leads with what moved
 // instead of making you compare two tables.
 export function describeChanges(
@@ -70,10 +87,16 @@ export function describeChanges(
   }
 
   const changes: string[] = [];
+  // "Drafted" and "Sent" are deliberately separate lines. Reporting a single
+  // "Contacted" number is what made a week of drafts nobody had sent yet read
+  // as fifteen prospects contacted.
   const labels: Array<[keyof LedgerStats, string]> = [
     ['discovered', 'Discovered'],
-    ['contacted', 'Contacted'],
-    ['emailed', 'Addresses emailed'],
+    ['drafted', 'Drafted'],
+    ['sent', 'Sent'],
+    ['pendingDrafts', 'Drafts pending'],
+    ['skipped', 'Skipped'],
+    ['emailed', 'Addresses in drafts'],
     ['replied', 'Replied'],
     ['booked', 'Booked'],
     ['declined', 'Declined'],
@@ -82,18 +105,17 @@ export function describeChanges(
   ];
 
   for (const [key, label] of labels) {
-    const before = previous.stats[key];
-    const after = next.stats[key];
+    const before = statValue(previous.stats, key);
+    const after = statValue(next.stats, key);
     if (before !== after) {
       const delta = after - before;
       changes.push(`${label}: ${before} to ${after} (${delta > 0 ? '+' : ''}${delta})`);
     }
   }
 
-  if (previous.stats.replyRate !== next.stats.replyRate) {
-    changes.push(
-      `Reply rate: ${previous.stats.replyRate}% to ${next.stats.replyRate}%`,
-    );
+  const rateBefore = statValue(previous.stats, 'replyRate');
+  if (rateBefore !== next.stats.replyRate) {
+    changes.push(`Reply rate: ${rateBefore}% to ${next.stats.replyRate}%`);
   }
 
   const before = new Set(previous.dueDomains);

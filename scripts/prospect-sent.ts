@@ -1,17 +1,16 @@
-// prospect:sent - record that a domain or address has been emailed, so the
-// pipeline never queues it again and follow-up timing starts counting. The
-// scheduled run records its own digests automatically; use this for anything
-// sent by hand or from another list.
+// prospect:sent - record that an email actually went out, which starts the
+// follow-up clock and is what the reply rate is measured against. Run this
+// after every send from Gmail, including drafts the digest composed: the
+// pipeline only knows it drafted them, never that you sent them.
 //
 // Usage:
 //   npm run prospect:sent -- acme.com
 //   npm run prospect:sent -- acme.com owner@acme.com
 //   npm run prospect:sent -- owner@acme.com other@shop.com
 import {
-  ledgerKnownEmails,
   normalizeDomain,
   normalizeEmail,
-  recordContacted,
+  recordSent,
 } from '../src/lib/prospect/ledger';
 import { loadLedger } from './lib/ledger-io';
 
@@ -32,23 +31,20 @@ async function main() {
   ].filter((d) => d.length > 0);
 
   const { ledger, save } = await loadLedger();
-  const before = ledgerKnownEmails(ledger);
-  const updated = recordContacted(ledger, domains, emails);
+  const alreadySent = { ...ledger.sentAt };
+  const updated = recordSent(ledger, domains, emails);
   await save(updated);
 
-  for (const email of emails) {
+  for (const domain of domains) {
     console.log(
-      before.has(email)
-        ? `  ${email} was already logged`
-        : `  ${email} logged as emailed`,
+      alreadySent[domain]
+        ? `  ${domain} was already logged as sent`
+        : `  ${domain} logged as sent`,
     );
   }
-  for (const domain of domains) {
-    console.log(`  ${domain} marked contacted`);
-  }
   console.log(
-    `\nLedger now records ${updated.contacted.length} contacted domain(s) and ` +
-      `${updated.contactedEmails.length} emailed address(es).`,
+    `\nLedger now records ${Object.keys(updated.sentAt).length} sent domain(s) ` +
+      `out of ${updated.contacted.length} drafted.`,
   );
 }
 

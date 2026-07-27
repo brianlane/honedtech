@@ -218,8 +218,11 @@ files).
 - **Google Business Profile copy**: [docs/gbp-content.md](docs/gbp-content.md),
   finished text for every profile field.
 - **Outreach commands**: `prospect:status` (dashboard and follow-ups due),
-  `prospect:sent`, `prospect:followup`, `prospect:reply`, `prospect:optout`.
-  All read and write one shared ledger in Cloudflare KV.
+  `prospect:sent` (log a send, which is what starts the follow-up clock),
+  `prospect:skip` (a draft you passed on), `prospect:followup`,
+  `prospect:reply`, `prospect:optout`. All read and write one shared ledger in
+  Cloudflare KV, which tracks drafted and sent as separate states because the
+  pipeline only drafts and a human does the sending.
 - **Launch kit**: [docs/launch-kit.md](docs/launch-kit.md). Daily outreach
   rhythm, sending rules and CAN-SPAM baseline, reply FAQ, LinkedIn copy,
   Google Business Profile checklist, UTM conventions, and what to measure.

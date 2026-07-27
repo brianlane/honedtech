@@ -114,7 +114,7 @@ export const POST: APIRoute = async ({ request }) => {
         `=== Follow-ups due (${followUps.length}) ===`,
         'One nudge each, then stop. Mark it with: npm run prospect:followup -- <domain>',
         ...followUps.map(
-          (f) => `- ${f.domain}${f.daysAgo ? ` (contacted ${f.daysAgo} days ago)` : ''}`,
+          (f) => `- ${f.domain}${f.daysAgo ? ` (sent ${f.daysAgo} days ago)` : ''}`,
         ),
         '',
       ].join('\n')
@@ -125,16 +125,21 @@ export const POST: APIRoute = async ({ request }) => {
         .map(
           (f) =>
             `<li>${escapeHtml(f.domain)}${
-              f.daysAgo ? ` (contacted ${f.daysAgo} days ago)` : ''
+              f.daysAgo ? ` (sent ${f.daysAgo} days ago)` : ''
             }</li>`,
         )
         .join('')}</ul>`
     : '';
 
+  // Nothing below has been sent to anybody. Every draft waits on a human, so
+  // the intro says which command records the send and which records a pass.
+  const nextSteps =
+    'Log each one you send with npm run prospect:sent -- <domain> <address>, which starts ' +
+    'the follow-up clock. Pass on one with npm run prospect:skip -- <domain>.';
   const intro = drafts.length
     ? isEnterprise
-      ? `${drafts.length} enterprise account(s) researched. Read each brief, find the named executive on LinkedIn, then send from Gmail using send-as brian@honedtech.com.`
-      : `${drafts.length} outreach draft(s) ready for review. Send from Gmail using send-as brian@honedtech.com, then log the domains so they are not contacted again.`
+      ? `${drafts.length} enterprise account(s) researched. Read each brief, find the named executive on LinkedIn, then send from Gmail using send-as brian@honedtech.com. ${nextSteps}`
+      : `${drafts.length} outreach draft(s) ready for review. Nothing has been sent yet. Send from Gmail using send-as brian@honedtech.com. ${nextSteps}`
     : 'No new drafts this morning, but you have follow-ups due.';
 
   const label = isEnterprise ? 'Enterprise digest' : 'Outreach digest';
