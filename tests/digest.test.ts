@@ -92,7 +92,7 @@ describe('POST /api/internal/digest', () => {
     const sent = vi.mocked(env.EMAIL.send).mock.calls[0][0] as Record<string, unknown>;
     expect(sent.subject).toBe('Outreach digest: 1 follow-up(s) due');
     expect(sent.text).toContain('No new drafts this morning');
-    expect(sent.text).toContain('old.com (contacted 7 days ago)');
+    expect(sent.text).toContain('old.com (sent 7 days ago)');
     expect(sent.html).toContain('Follow-ups due (1)');
   });
 
@@ -138,6 +138,11 @@ describe('POST /api/internal/digest', () => {
     expect(sent.subject).toContain('1 draft(s) ready');
     expect(sent.text).toContain('owner@acme.com');
     expect(sent.text).toContain(DRAFT.subject);
+    // The digest is the only place that can tell you nothing has gone out yet
+    // and which command records it when it does.
+    expect(sent.text).toContain('Nothing has been sent yet');
+    expect(sent.text).toContain('npm run prospect:sent');
+    expect(sent.text).toContain('npm run prospect:skip');
     // Business names are escaped in the HTML part.
     expect(sent.html).toContain('Acme &lt;HVAC&gt;');
   });

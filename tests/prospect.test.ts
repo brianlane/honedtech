@@ -37,6 +37,8 @@ import {
   recordFollowUp,
   recordOptedOut,
   recordOutcome,
+  recordSent,
+  recordSkipped,
   serializeLedger,
   verticalBreakdown,
 } from '../src/lib/prospect/ledger';
@@ -418,6 +420,8 @@ describe('ledger', () => {
     contactedEmails: [],
     optedOut: [],
     contactedAt: {},
+    sentAt: {},
+    skipped: [],
     followedUpAt: {},
     outcomes: {},
     verticals: {},
@@ -658,18 +662,61 @@ describe('ledger', () => {
     expect(ledger.outcomes).toEqual({});
   });
 
+  // Drafting is what the pipeline does; sending is what a human does. Only the
+  // second one means a prospect heard from us, so the two are recorded apart.
+  describe('recordSent', () => {
+    it('records the send alongside the draft and the address', () => {
+      const at = new Date('2026-07-10T00:00:00Z');
+      const next = recordSent(EMPTY, ['www.acme.com'], ['Owner@Acme.com'], at);
+      expect(next.sentAt).toEqual({ 'acme.com': at.toISOString() });
+      // Suppression keys off the drafted list, so a hand-sent domain the
+      // pipeline never drafted still gets recorded there.
+      expect(next.contacted).toEqual(['acme.com']);
+      expect(next.contactedEmails).toEqual(['owner@acme.com']);
+      expect(next.discovered).toEqual(['acme.com']);
+    });
+
+    it('keeps the first send time and ignores blank domains', () => {
+      const day1 = new Date('2026-07-01T00:00:00Z');
+      const day2 = new Date('2026-07-09T00:00:00Z');
+      const twice = recordSent(recordSent(EMPTY, ['acme.com'], [], day1), ['acme.com'], [], day2);
+      expect(twice.sentAt['acme.com']).toBe(day1.toISOString());
+      expect(recordSent(EMPTY, [''], [], day1).sentAt).toEqual({});
+    });
+
+    it('defaults to no addresses', () => {
+      expect(recordSent(EMPTY, ['acme.com']).contactedEmails).toEqual([]);
+    });
+  });
+
+  describe('recordSkipped', () => {
+    it('records a pass without duplicating, and keeps it suppressed', () => {
+      const once = recordSkipped(EMPTY, ['https://www.acme.com/contact', '']);
+      const twice = recordSkipped(once, ['acme.com']);
+      expect(twice.skipped).toEqual(['acme.com']);
+      expect(twice.discovered).toEqual(['acme.com']);
+      expect(ledgerKnownDomains(twice).has('acme.com')).toBe(true);
+    });
+  });
+
+  it('parses the sent map and skipped list, dropping malformed entries', () => {
+    const ledger = parseLedger(
+      JSON.stringify({
+        sentAt: { 'WWW.A.com': '2026-07-01T00:00:00Z', 'b.com': 42 },
+        skipped: ['WWW.C.com', 7, ''],
+      }),
+    );
+    expect(ledger.sentAt).toEqual({ 'a.com': '2026-07-01T00:00:00Z' });
+    expect(ledger.skipped).toEqual(['c.com']);
+  });
+
   describe('dueForFollowUp', () => {
     const now = new Date('2026-07-20T00:00:00Z');
-    const base = recordContacted(
-      EMPTY,
-      ['old.com', 'fresh.com', 'ancient.com'],
-      [],
-      now,
-    );
+    const base = recordSent(EMPTY, ['old.com', 'fresh.com', 'ancient.com'], [], now);
     // Hand-set timestamps so each case lands in a known window.
     const ledger: typeof base = {
       ...base,
-      contactedAt: {
+      sentAt: {
         'old.com': '2026-07-13T00:00:00Z', // 7 days ago, due
         'fresh.com': '2026-07-19T00:00:00Z', // 1 day ago, too soon
         'ancient.com': '2026-05-01T00:00:00Z', // way past the window
@@ -680,8 +727,22 @@ describe('ledger', () => {
       expect(dueForFollowUp(ledger, now).map((d) => d.domain)).toEqual(['old.com']);
     });
 
-    it('reports how many days ago contact happened', () => {
+    it('reports how many days ago the email went out', () => {
       expect(dueForFollowUp(ledger, now)[0].daysAgo).toBe(7);
+      expect(dueForFollowUp(ledger, now)[0].sentAt).toBe('2026-07-13T00:00:00Z');
+    });
+
+    // The bug this separation exists to kill: a draft sitting in the review
+    // inbox used to start the follow-up clock, so the pipeline would ask you to
+    // nudge somebody who had never received a first email.
+    it('never nudges a domain that was only ever drafted', () => {
+      const drafted = recordContacted(
+        EMPTY,
+        ['drafted.com'],
+        [],
+        new Date('2026-07-01T00:00:00Z'),
+      );
+      expect(dueForFollowUp(drafted, now)).toEqual([]);
     });
 
     it('skips anyone who replied, was followed up, or opted out', () => {
@@ -691,14 +752,14 @@ describe('ledger', () => {
     });
 
     it('skips unparseable timestamps', () => {
-      const broken = { ...ledger, contactedAt: { 'x.com': 'not-a-date' } };
+      const broken = { ...ledger, sentAt: { 'x.com': 'not-a-date' } };
       expect(dueForFollowUp(broken, now)).toEqual([]);
     });
 
     it('sorts the longest wait first', () => {
       const two = {
         ...ledger,
-        contactedAt: {
+        sentAt: {
           'a.com': '2026-07-14T00:00:00Z', // 6 days
           'b.com': '2026-07-10T00:00:00Z', // 10 days
         },
@@ -710,37 +771,80 @@ describe('ledger', () => {
   describe('ledgerStats', () => {
     it('reports zeros for an empty ledger without dividing by zero', () => {
       const stats = ledgerStats(EMPTY);
-      expect(stats.contacted).toBe(0);
+      expect(stats.drafted).toBe(0);
+      expect(stats.sent).toBe(0);
       expect(stats.replyRate).toBe(0);
     });
 
-    it('counts outcomes and computes a reply rate including bookings', () => {
-      let ledger = recordContacted(
-        EMPTY,
-        ['a.com', 'b.com', 'c.com', 'd.com'],
-        ['a@a.com'],
-      );
+    // A week of drafting used to report as a week of outreach, which is how
+    // "Contacted: 15" ended up next to an empty Gmail sent folder.
+    it('counts drafts as drafted and nothing more until they are sent', () => {
+      const ledger = recordContacted(EMPTY, ['a.com', 'b.com', 'c.com'], ['a@a.com']);
+      const stats = ledgerStats(ledger);
+      expect(stats.drafted).toBe(3);
+      expect(stats.sent).toBe(0);
+      expect(stats.pendingDrafts).toBe(3);
+      expect(stats.awaitingReply).toBe(0);
+      expect(stats.replyRate).toBe(0);
+    });
+
+    it('takes sent and skipped drafts out of the pending queue', () => {
+      let ledger = recordContacted(EMPTY, ['a.com', 'b.com', 'c.com', 'd.com']);
+      ledger = recordSent(ledger, ['a.com']);
+      ledger = recordSkipped(ledger, ['b.com']);
+      const stats = ledgerStats(ledger);
+      expect(stats.drafted).toBe(4);
+      expect(stats.sent).toBe(1);
+      expect(stats.skipped).toBe(1);
+      expect(stats.pendingDrafts).toBe(2);
+    });
+
+    it('counts outcomes and rates replies against what was sent', () => {
+      let ledger = recordSent(EMPTY, ['a.com', 'b.com', 'c.com', 'd.com'], ['a@a.com']);
+      // Drafted but never sent, so it must not dilute the rate.
+      ledger = recordContacted(ledger, ['unsent.com']);
       ledger = recordOutcome(ledger, 'a.com', 'replied');
       ledger = recordOutcome(ledger, 'b.com', 'booked');
       ledger = recordOutcome(ledger, 'c.com', 'bounced');
       const stats = ledgerStats(ledger);
-      expect(stats.contacted).toBe(4);
+      expect(stats.drafted).toBe(5);
+      expect(stats.sent).toBe(4);
       expect(stats.emailed).toBe(1);
       expect(stats.replied).toBe(1);
       expect(stats.booked).toBe(1);
       expect(stats.bounced).toBe(1);
       expect(stats.awaitingReply).toBe(1);
-      // 2 of 4 produced a reply.
+      // 2 of the 4 sent produced a reply.
       expect(stats.replyRate).toBe(50);
+    });
+
+    // Both sides of a rate have to count the same population. An outcome on a
+    // domain with no send on record (a send logged as a reply but never as a
+    // send) would otherwise be a numerator with no denominator.
+    it('leaves the rate alone for an outcome with no send on record', () => {
+      let ledger = recordContacted(EMPTY, ['drafted.com']);
+      ledger = recordOutcome(ledger, 'drafted.com', 'booked');
+      const stats = ledgerStats(ledger);
+      expect(stats.booked).toBe(1);
+      expect(stats.sent).toBe(0);
+      expect(stats.replyRate).toBe(0);
+
+      const withOneSend = recordOutcome(
+        recordSent(ledger, ['sent.com']),
+        'sent.com',
+        'replied',
+      );
+      // One send, one reply to it: 100%, not 200%.
+      expect(ledgerStats(withOneSend).replyRate).toBe(100);
     });
   });
 
   describe('verticalBreakdown', () => {
-    it('is empty when nobody has been contacted', () => {
+    it('is empty when nothing has been drafted', () => {
       expect(verticalBreakdown(EMPTY)).toEqual([]);
     });
 
-    it('groups outcomes by vertical, most contacted first', () => {
+    it('groups outcomes by vertical, most drafted first', () => {
       let ledger = recordContacted(
         EMPTY,
         ['a.com', 'b.com', 'c.com', 'd.com'],
@@ -753,22 +857,23 @@ describe('ledger', () => {
           'd.com': 'HVAC & Plumbing',
         },
       );
+      ledger = recordSent(ledger, ['a.com', 'b.com']);
       ledger = recordOutcome(ledger, 'a.com', 'replied');
       ledger = recordOutcome(ledger, 'b.com', 'booked');
       ledger = recordOutcome(ledger, 'c.com', 'declined');
       expect(verticalBreakdown(ledger)).toEqual([
-        { vertical: 'Pest Control', contacted: 3, replied: 1, booked: 1 },
-        { vertical: 'HVAC & Plumbing', contacted: 1, replied: 0, booked: 0 },
+        { vertical: 'Pest Control', drafted: 3, sent: 2, replied: 1, booked: 1 },
+        { vertical: 'HVAC & Plumbing', drafted: 1, sent: 0, replied: 0, booked: 0 },
       ]);
     });
 
-    it('groups pre-tracking contacts as unknown and breaks ties alphabetically', () => {
+    it('groups pre-tracking drafts as unknown and breaks ties alphabetically', () => {
       const ledger = recordContacted(EMPTY, ['old.com', 'new.com'], [], new Date(), {
         'new.com': 'Pest Control',
       });
       expect(verticalBreakdown(ledger)).toEqual([
-        { vertical: '(unknown)', contacted: 1, replied: 0, booked: 0 },
-        { vertical: 'Pest Control', contacted: 1, replied: 0, booked: 0 },
+        { vertical: '(unknown)', drafted: 1, sent: 0, replied: 0, booked: 0 },
+        { vertical: 'Pest Control', drafted: 1, sent: 0, replied: 0, booked: 0 },
       ]);
     });
   });
@@ -800,6 +905,22 @@ describe('ledger', () => {
       const late = { ...EMPTY, contactedAt: { 'a.com': '2026-07-09T00:00:00Z' } };
       expect(mergeLedgers(early, late).contactedAt['a.com']).toBe('2026-07-01T00:00:00Z');
       expect(mergeLedgers(late, early).contactedAt['a.com']).toBe('2026-07-01T00:00:00Z');
+    });
+
+    it('keeps the earliest send and unions the skipped list', () => {
+      const early = {
+        ...EMPTY,
+        sentAt: { 'a.com': '2026-07-01T00:00:00Z' },
+        skipped: ['x.com'],
+      };
+      const late = {
+        ...EMPTY,
+        sentAt: { 'a.com': '2026-07-09T00:00:00Z' },
+        skipped: ['y.com'],
+      };
+      expect(mergeLedgers(early, late).sentAt['a.com']).toBe('2026-07-01T00:00:00Z');
+      expect(mergeLedgers(late, early).sentAt['a.com']).toBe('2026-07-01T00:00:00Z');
+      expect(mergeLedgers(early, late).skipped.sort()).toEqual(['x.com', 'y.com']);
     });
 
     it('keeps the latest follow-up and outcome, which correct an earlier state', () => {

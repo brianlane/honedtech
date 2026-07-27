@@ -49,6 +49,12 @@ export function serializeSnapshot(snapshot: StatusSnapshot): string {
 
 // A missing previous snapshot counts as changed, so the very first run always
 // reports rather than silently doing nothing.
+//
+// Otherwise the question is exactly "is there anything to say", asked of the
+// code that says it. Comparing serialized snapshots instead meant any
+// difference the change list never mentions (a derived counter, or a field
+// renamed between releases) mailed a report with an empty "what changed"
+// section, which is worse than the silence it broke.
 export function snapshotChanged(
   previous: StatusSnapshot | null,
   next: StatusSnapshot,
@@ -56,7 +62,27 @@ export function snapshotChanged(
   if (!previous) {
     return true;
   }
-  return serializeSnapshot(previous) !== serializeSnapshot(next);
+  return describeChanges(previous, next).length > 0;
+}
+
+// Where a counter's value lives in a snapshot written before drafting and
+// sending were told apart. `drafted` was simply called `contacted` back then,
+// and every drafted domain was pending by definition, because nothing recorded
+// a send at all. Without these two the first report after the change would
+// call an unchanged backlog brand new.
+const LEGACY_STAT_KEYS: Partial<Record<keyof LedgerStats, string>> = {
+  drafted: 'contacted',
+  pendingDrafts: 'contacted',
+};
+
+// A stored snapshot is JSON from an earlier version of this file, so a counter
+// added since it was written is simply absent. Reading it as 0 makes the first
+// report after a shape change diff cleanly instead of saying "undefined to 15".
+function statValue(stats: LedgerStats, key: keyof LedgerStats): number {
+  const loose = stats as unknown as Record<string, number | undefined>;
+  const legacyKey = LEGACY_STAT_KEYS[key];
+  const value = loose[key] ?? (legacyKey ? loose[legacyKey] : undefined);
+  return typeof value === 'number' ? value : 0;
 }
 
 // Human-readable diff for the email, so the message leads with what moved
@@ -70,10 +96,16 @@ export function describeChanges(
   }
 
   const changes: string[] = [];
+  // "Drafted" and "Sent" are deliberately separate lines. Reporting a single
+  // "Contacted" number is what made a week of drafts nobody had sent yet read
+  // as fifteen prospects contacted.
   const labels: Array<[keyof LedgerStats, string]> = [
     ['discovered', 'Discovered'],
-    ['contacted', 'Contacted'],
-    ['emailed', 'Addresses emailed'],
+    ['drafted', 'Drafted'],
+    ['sent', 'Sent'],
+    ['pendingDrafts', 'Drafts pending'],
+    ['skipped', 'Skipped'],
+    ['emailed', 'Addresses in drafts'],
     ['replied', 'Replied'],
     ['booked', 'Booked'],
     ['declined', 'Declined'],
@@ -82,18 +114,26 @@ export function describeChanges(
   ];
 
   for (const [key, label] of labels) {
-    const before = previous.stats[key];
-    const after = next.stats[key];
+    const before = statValue(previous.stats, key);
+    const after = statValue(next.stats, key);
     if (before !== after) {
       const delta = after - before;
       changes.push(`${label}: ${before} to ${after} (${delta > 0 ? '+' : ''}${delta})`);
     }
   }
 
-  if (previous.stats.replyRate !== next.stats.replyRate) {
-    changes.push(
-      `Reply rate: ${previous.stats.replyRate}% to ${next.stats.replyRate}%`,
-    );
+  // The rate is derived from replies, bookings and sends, each of which is
+  // reported above, so it is worth a line only when one of those actually
+  // moved. On its own a rate can differ for a reason that is not news: it used
+  // to be a share of drafts rather than of sends, so the first report after
+  // that change would otherwise announce a collapse in a quiet week.
+  const rateInputs: Array<keyof LedgerStats> = ['replied', 'booked', 'sent'];
+  const rateInputMoved = rateInputs.some(
+    (key) => statValue(previous.stats, key) !== statValue(next.stats, key),
+  );
+  const rateBefore = statValue(previous.stats, 'replyRate');
+  if (rateInputMoved && rateBefore !== next.stats.replyRate) {
+    changes.push(`Reply rate: ${rateBefore}% to ${next.stats.replyRate}%`);
   }
 
   const before = new Set(previous.dueDomains);

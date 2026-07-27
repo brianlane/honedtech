@@ -63,7 +63,7 @@ async function main() {
   const known = ledgerKnownDomains(ledger);
   const knownEmails = ledgerKnownEmails(ledger);
   console.log(
-    `Ledger: ${known.size} known domain(s), ${knownEmails.size} emailed address(es)`,
+    `Ledger: ${known.size} known domain(s), ${knownEmails.size} address(es) already drafted to`,
   );
 
   // Owed follow-ups ride along in the same digest, so there is only ever one
@@ -143,12 +143,16 @@ async function main() {
     const digestUrl = required('DIGEST_URL');
     const digestSecret = required('DIGEST_SECRET');
 
-    // These drafts are about to leave our hands, so record them BEFORE the
-    // send. Sending first and recording after leaves a window where the
-    // digest is in the inbox but KV still shows the domains uncontacted, and
-    // the next run then drafts the same people again. Recording first can
-    // cost a prospect if the send fails, which against thousands of in-window
-    // candidates is cheap. Emailing someone twice is not.
+    // Recorded as DRAFTED, not as sent: these are about to land in our own
+    // review inbox, and only a human sending one from Gmail (logged with
+    // prospect:sent) counts as outreach.
+    //
+    // Recorded BEFORE the digest goes out. Sending first and recording after
+    // leaves a window where the digest is in the inbox but KV still shows the
+    // domains undrafted, and the next run then drafts the same people again.
+    // Recording first can cost a prospect if the send fails, which against
+    // thousands of in-window candidates is cheap. Drafting someone twice and
+    // emailing them twice is not.
     updated = recordContacted(
       updated,
       drafts.map((d) => d.domain),
@@ -171,7 +175,7 @@ async function main() {
     if (!res.ok) {
       throw new Error(
         `Digest send failed (${res.status}): ${(await res.text()).slice(0, 300)}. ` +
-          'These prospects are already recorded as contacted and will not be surfaced again.',
+          'These prospects are already recorded as drafted and will not be surfaced again.',
       );
     }
     console.log(
@@ -183,7 +187,9 @@ async function main() {
 
   console.log(
     `Ledger updated: ${updated.discovered.length} discovered, ` +
-      `${updated.contactedEmails.length} address(es) emailed.`,
+      `${updated.contacted.length} drafted, ` +
+      `${updated.contactedEmails.length} address(es) in drafts. ` +
+      'None of these have been sent to a prospect.',
   );
 }
 

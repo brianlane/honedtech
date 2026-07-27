@@ -201,9 +201,11 @@ async function main() {
   const digestUrl = required('DIGEST_URL');
   const digestSecret = required('DIGEST_SECRET');
 
-  // Recorded BEFORE the send, same reasoning as the SMB pipeline: sending
-  // first leaves a window where the digest exists but KV still shows these
-  // accounts uncontacted, and next week researches and mails them again.
+  // Recorded as DRAFTED before the digest goes out, same reasoning as the SMB
+  // pipeline: sending first leaves a window where the digest exists but KV
+  // still shows these accounts undrafted, and next week researches and mails
+  // them again. Enterprise drafts carry no address at all, so the send is
+  // always a manual step logged with prospect:sent.
   updated = recordContacted(
     updated,
     drafts.map((d) => d.domain),
@@ -221,7 +223,7 @@ async function main() {
   if (!res.ok) {
     throw new Error(
       `Digest send failed (${res.status}): ${(await res.text()).slice(0, 300)}. ` +
-        'These accounts are already recorded as contacted and will not be surfaced again.',
+        'These accounts are already recorded as drafted and will not be surfaced again.',
     );
   }
   console.log(`\nDigest emailed: ${drafts.length} account(s).`);
@@ -233,7 +235,7 @@ async function main() {
   console.log(`Estimated combined reclaim: $${totalReclaim.toLocaleString('en-US')}/mo`);
 
   console.log(
-    `Ledger updated: ${updated.discovered.length} discovered, ${updated.contacted.length} contacted.`,
+    `Ledger updated: ${updated.discovered.length} discovered, ${updated.contacted.length} drafted.`,
   );
 }
 

@@ -19,6 +19,7 @@
     "enterprise:pipeline": "tsx scripts/enterprise-pipeline.ts",
     "prospect:optout": "tsx scripts/prospect-optout.ts",
     "prospect:sent": "tsx scripts/prospect-sent.ts",
+    "prospect:skip": "tsx scripts/prospect-skip.ts",
     "prospect:status": "tsx scripts/prospect-status.ts",
     "prospect:status:email": "tsx scripts/prospect-status-email.ts",
     "prospect:reply": "tsx scripts/prospect-reply.ts",

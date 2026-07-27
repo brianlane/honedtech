@@ -16,8 +16,8 @@ function makeContext(body: unknown, secret?: string, raw?: string): PostContext 
 }
 
 const PAYLOAD = {
-  changes: ['Contacted: 3 to 6 (+3)'],
-  stats: { contacted: 6, replyRate: 16.7 },
+  changes: ['Sent: 3 to 6 (+3)'],
+  stats: { drafted: 6, sent: 6, pendingDrafts: 0, replyRate: 16.7 },
   dueDomains: ['old.com'],
 };
 
@@ -61,12 +61,43 @@ describe('POST /api/internal/status', () => {
 
     const sent = vi.mocked(env.EMAIL.send).mock.calls[0][0] as Record<string, unknown>;
     expect(sent.subject).toBe('Outreach weekly status: 1 change(s)');
-    expect(sent.text).toContain('Contacted: 3 to 6 (+3)');
-    expect(sent.text).toContain('Contacted: 6');
+    expect(sent.text).toContain('Sent: 3 to 6 (+3)');
+    // Drafted and sent are labelled apart, so neither can be read as the other.
+    expect(sent.text).toContain('Drafted (in your review inbox): 6');
+    expect(sent.text).toContain('Sent by hand from Gmail: 6');
     // Reply rate carries a percent sign, other counters do not.
-    expect(sent.text).toContain('Reply rate: 16.7%');
+    expect(sent.text).toContain('Reply rate (of sent): 16.7%');
     expect(sent.text).toContain('old.com');
     expect(sent.html).toContain('What changed this week');
+  });
+
+  // The state that started all this: drafts delivered, nothing sent. Left to a
+  // counter alone it reads as progress, so the email says it in words.
+  it('says outright when drafts are still waiting to be sent', async () => {
+    const res = await POST(
+      makeContext(
+        { ...PAYLOAD, stats: { ...PAYLOAD.stats, sent: 0, pendingDrafts: 6 } },
+        'top-secret',
+      ),
+    );
+    expect(res.status).toBe(200);
+    const sent = vi.mocked(env.EMAIL.send).mock.calls[0][0] as Record<string, unknown>;
+    expect(sent.text).toContain('6 draft(s) are still waiting in your digest emails.');
+    expect(sent.text).toContain('npm run prospect:sent');
+    expect(sent.html).toContain('<strong>6 draft(s) are still waiting');
+  });
+
+  it('omits the pending note when nothing is waiting or the count is absent', async () => {
+    const res = await POST(makeContext(PAYLOAD, 'top-secret'));
+    expect(res.status).toBe(200);
+    const withZero = vi.mocked(env.EMAIL.send).mock.calls[0][0] as Record<string, unknown>;
+    expect(withZero.text).not.toContain('still waiting');
+    expect(withZero.html).not.toContain('still waiting');
+
+    vi.mocked(env.EMAIL.send).mockClear();
+    await POST(makeContext({ ...PAYLOAD, stats: { sent: 6 } }, 'top-secret'));
+    const withNone = vi.mocked(env.EMAIL.send).mock.calls[0][0] as Record<string, unknown>;
+    expect(withNone.text).not.toContain('still waiting');
   });
 
   it('says so plainly when no follow-ups are due', async () => {
@@ -85,13 +116,14 @@ describe('POST /api/internal/status', () => {
         {
           ...PAYLOAD,
           byVertical: [
-            { vertical: 'Pest Control', contacted: 5, replied: 1, booked: 1 },
+            { vertical: 'Pest Control', drafted: 5, sent: 3, replied: 1, booked: 1 },
             null,
             'junk',
-            { vertical: 42, contacted: 5, replied: 1, booked: 1 },
-            { vertical: 'HVAC & Plumbing', contacted: 'five', replied: 1, booked: 1 },
-            { vertical: 'HVAC & Plumbing', contacted: 5, replied: 'one', booked: 1 },
-            { vertical: 'HVAC & Plumbing', contacted: 5, replied: 1, booked: 'one' },
+            { vertical: 42, drafted: 5, sent: 3, replied: 1, booked: 1 },
+            { vertical: 'HVAC & Plumbing', drafted: 'five', sent: 3, replied: 1, booked: 1 },
+            { vertical: 'HVAC & Plumbing', drafted: 5, sent: 'three', replied: 1, booked: 1 },
+            { vertical: 'HVAC & Plumbing', drafted: 5, sent: 3, replied: 'one', booked: 1 },
+            { vertical: 'HVAC & Plumbing', drafted: 5, sent: 3, replied: 1, booked: 'one' },
           ],
         },
         'top-secret',
@@ -100,7 +132,7 @@ describe('POST /api/internal/status', () => {
     expect(res.status).toBe(200);
     const sent = vi.mocked(env.EMAIL.send).mock.calls[0][0] as Record<string, unknown>;
     expect(sent.text).toContain('By vertical:');
-    expect(sent.text).toContain('Pest Control: 5 contacted, 1 replied, 1 booked');
+    expect(sent.text).toContain('Pest Control: 5 drafted, 3 sent, 1 replied, 1 booked');
     expect(sent.text).not.toContain('HVAC');
     expect(sent.html).toContain('<h3>By vertical</h3>');
   });
@@ -129,9 +161,14 @@ describe('POST /api/internal/status', () => {
 
   it('reports stats even when the change list is empty, if forced', async () => {
     const res = await POST(
-      makeContext({ changes: [], stats: { contacted: 6 } }, 'top-secret'),
+      makeContext({ changes: [], stats: { drafted: 6 } }, 'top-secret'),
     );
     expect(res.status).toBe(200);
+    // A forced send is the only way here, and a heading with nothing under it
+    // reads like the email is broken.
+    const sent = vi.mocked(env.EMAIL.send).mock.calls[0][0] as Record<string, unknown>;
+    expect(sent.text).toContain('Nothing moved since the last report.');
+    expect(sent.html).toContain('Nothing moved since the last report.');
   });
 
   it('returns 500 when the email send fails', async () => {
