@@ -64,12 +64,12 @@ jobs:
           DIGEST_URL: ${{ vars.DIGEST_URL }}
           # Optional override; the pipeline has a working default.
           WARN_ARCHIVE_URL: ${{ vars.WARN_ARCHIVE_URL }}
-          # On a manual run the input is authoritative, blank included: the
-          # dispatch form says blank means nationwide, and `||` quietly
-          # substituted the repository variable so a nationwide pass was
-          # impossible while that variable was set. The variable is the
-          # default only for the scheduled run, which has no input.
-          WARN_STATES: ${{ github.event_name == 'workflow_dispatch' && inputs.states || vars.WARN_STATES }}
+          # Passed separately and resolved in the pipeline. No Actions
+          # expression can express "a blank manual input means nationwide",
+          # because an empty string is falsy and any `||` falls through to the
+          # variable. See resolveWarnStates.
+          WARN_STATES: ${{ inputs.states }}
+          WARN_STATES_DEFAULT: ${{ vars.WARN_STATES }}
           ENTERPRISE_LIMIT: ${{ inputs.limit || '6' }}
           DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
         run: npm run enterprise:pipeline

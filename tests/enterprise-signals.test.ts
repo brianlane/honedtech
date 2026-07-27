@@ -37,6 +37,7 @@ import {
   estimateSeats,
   reclaimUrl,
 } from '../src/lib/enterprise/brief';
+import { resolveWarnStates } from '../src/lib/enterprise/states';
 import {
   MIN_MATCH_RATIO,
   isLikelySameCompany,
@@ -114,6 +115,35 @@ describe('normalizeWarnRecord', () => {
     expect(normalizeWarnRecord({ city: 'Tempe' })).toBeNull();
     expect(normalizeWarnRecord({ employer: '   ' })).toBeNull();
     expect(normalizeWarnRecord({ employer: 42 })).toBeNull();
+  });
+});
+
+// No Actions expression can express "a blank manual input means nationwide",
+// because an empty string is falsy and any `||` falls through to the
+// repository variable. The decision has to happen where blank and absent are
+// distinguishable.
+describe('resolveWarnStates', () => {
+  it('honours a blank manual input as nationwide, ignoring the variable', () => {
+    expect(resolveWarnStates('workflow_dispatch', '', 'CA,TX')).toEqual([]);
+    expect(resolveWarnStates('workflow_dispatch', undefined, 'CA,TX')).toEqual([]);
+  });
+
+  it('uses a manual input when one was given', () => {
+    expect(resolveWarnStates('workflow_dispatch', 'az, ny', 'CA')).toEqual(['AZ', 'NY']);
+  });
+
+  it('falls back to the variable on a scheduled run', () => {
+    expect(resolveWarnStates('schedule', '', 'ca,tx')).toEqual(['CA', 'TX']);
+    expect(resolveWarnStates('schedule', undefined, 'CA')).toEqual(['CA']);
+  });
+
+  it('is nationwide when neither side says anything', () => {
+    expect(resolveWarnStates('schedule', '', '')).toEqual([]);
+    expect(resolveWarnStates(undefined, undefined, undefined)).toEqual([]);
+  });
+
+  it('drops anything that is not a two-letter code', () => {
+    expect(resolveWarnStates('schedule', 'CA, , ARIZONA, tx', '')).toEqual(['CA', 'TX']);
   });
 });
 
