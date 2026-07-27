@@ -136,6 +136,22 @@ async function main() {
   if (drafts.length > 0 || followUps.length > 0) {
     const digestUrl = required('DIGEST_URL');
     const digestSecret = required('DIGEST_SECRET');
+
+    // These drafts are about to leave our hands, so record them BEFORE the
+    // send. Sending first and recording after leaves a window where the
+    // digest is in the inbox but KV still shows the domains uncontacted, and
+    // the next run then drafts the same people again. Recording first can
+    // cost a prospect if the send fails, which against thousands of in-window
+    // candidates is cheap. Emailing someone twice is not.
+    updated = recordContacted(
+      updated,
+      drafts.map((d) => d.domain),
+      drafts.map((d) => d.to).filter((to) => to.length > 0),
+    );
+    // Merged rather than overwritten: a hand-run optout or reply landing while
+    // this pipeline was working must not be erased by our older snapshot.
+    await saveLedgerMerged(cfToken, namespaceId, LEDGER_KEY, updated);
+
     const res = await fetch(digestUrl, {
       method: 'POST',
       headers: {
@@ -145,29 +161,18 @@ async function main() {
       body: JSON.stringify({ drafts, followUps }),
     });
     if (!res.ok) {
-      // Fail loudly without writing the ledger, so the next run retries these
-      // prospects rather than losing them to a silent email failure.
       throw new Error(
-        `Digest send failed (${res.status}): ${(await res.text()).slice(0, 300)}`,
+        `Digest send failed (${res.status}): ${(await res.text()).slice(0, 300)}. ` +
+          'These prospects are already recorded as contacted and will not be surfaced again.',
       );
     }
     console.log(
       `\nDigest emailed: ${drafts.length} draft(s), ${followUps.length} follow-up(s).`,
     );
-
-    // Recorded once the digest is safely delivered. These drafts are now in
-    // your hands, so treat the addresses as contacted and never queue them
-    // again, even if you decide not to send one.
-    updated = recordContacted(
-      updated,
-      drafts.map((d) => d.domain),
-      drafts.map((d) => d.to).filter((to) => to.length > 0),
-    );
+  } else {
+    await saveLedgerMerged(cfToken, namespaceId, LEDGER_KEY, updated);
   }
 
-  // Merged rather than overwritten: a hand-run optout or reply landing while
-  // this pipeline was working must not be erased by our older snapshot.
-  await saveLedgerMerged(cfToken, namespaceId, LEDGER_KEY, updated);
   console.log(
     `Ledger updated: ${updated.discovered.length} discovered, ` +
       `${updated.contactedEmails.length} address(es) emailed.`,

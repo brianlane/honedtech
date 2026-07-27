@@ -167,6 +167,16 @@ async function main() {
 
   const digestUrl = required('DIGEST_URL');
   const digestSecret = required('DIGEST_SECRET');
+
+  // Recorded BEFORE the send, same reasoning as the SMB pipeline: sending
+  // first leaves a window where the digest exists but KV still shows these
+  // accounts uncontacted, and next week researches and mails them again.
+  updated = recordContacted(
+    updated,
+    drafts.map((d) => d.domain),
+  );
+  await saveLedgerMerged(cfToken, namespaceId, LEDGER_KEY, updated);
+
   const res = await fetch(digestUrl, {
     method: 'POST',
     headers: {
@@ -176,10 +186,9 @@ async function main() {
     body: JSON.stringify({ drafts, kind: 'enterprise' }),
   });
   if (!res.ok) {
-    // Fail loudly without writing the ledger, so next week retries these
-    // accounts rather than losing them to a silent email failure.
     throw new Error(
-      `Digest send failed (${res.status}): ${(await res.text()).slice(0, 300)}`,
+      `Digest send failed (${res.status}): ${(await res.text()).slice(0, 300)}. ` +
+        'These accounts are already recorded as contacted and will not be surfaced again.',
     );
   }
   console.log(`\nDigest emailed: ${drafts.length} account(s).`);
@@ -190,15 +199,6 @@ async function main() {
   );
   console.log(`Estimated combined reclaim: $${totalReclaim.toLocaleString('en-US')}/mo`);
 
-  // Recorded once the digest is safely delivered. These accounts are now in
-  // your hands, so they are never surfaced again even if you skip one.
-  updated = recordContacted(
-    updated,
-    drafts.map((d) => d.domain),
-  );
-
-  // Merged rather than overwritten, same reasoning as the SMB pipeline.
-  await saveLedgerMerged(cfToken, namespaceId, LEDGER_KEY, updated);
   console.log(
     `Ledger updated: ${updated.discovered.length} discovered, ${updated.contacted.length} contacted.`,
   );
