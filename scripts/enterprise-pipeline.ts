@@ -34,11 +34,16 @@ import { resolveCompanyDomain } from './lib/places';
 import { fetchJobPostings } from './lib/ats-fetch';
 import { readLedgerStrict, saveLedgerMerged } from './lib/ledger-io';
 import { parseRunLimit } from '../src/lib/prospect/limits';
+import { resolveWarnStates } from '../src/lib/enterprise/states';
 
 // Deliberately separate from the SMB "outreach-ledger" so the two tracks never
 // suppress each other. A local plumber and a 400-person employer are different
 // conversations even in the unlikely case they share a domain.
 const LEDGER_KEY = 'enterprise-ledger';
+
+// How many accounts to research per account contacted. Three keeps the extra
+// Places spend modest while giving the score a real choice to make.
+const POOL_MULTIPLIER = 3;
 
 interface Draft {
   business: string;
@@ -66,10 +71,11 @@ async function main() {
   const cfToken = required('CLOUDFLARE_API_TOKEN');
   const namespaceId = required('OUTREACH_KV_NAMESPACE_ID');
   const placesKey = required('GOOGLE_PLACES_API_KEY');
-  const states = (process.env.WARN_STATES ?? '')
-    .split(',')
-    .map((s) => s.trim().toUpperCase())
-    .filter((s) => s.length === 2);
+  const states = resolveWarnStates(
+    process.env.GITHUB_EVENT_NAME,
+    process.env.WARN_STATES,
+    process.env.WARN_STATES_DEFAULT,
+  );
 
   console.log(`Enterprise pipeline start (limit ${limit}${dryRun ? ', dry run' : ''})`);
 
@@ -89,10 +95,18 @@ async function main() {
   }
 
   const accounts: EnterpriseAccount[] = [];
-  const resolvedDomains: string[] = [];
+
+  // Research more accounts than we will contact, then let the score choose.
+  //
+  // Stopping at the first `limit` that resolved meant ranking only reordered
+  // a set already fixed by WARN freshness, so a stronger account further down
+  // the list was never researched at all. Researching a wider pool and taking
+  // the best costs a few more Places lookups per run, which is the right
+  // trade when the alternative is mailing the merely-earliest.
+  const researchPool = limit * POOL_MULTIPLIER;
 
   for (const record of records) {
-    if (accounts.length >= limit) {
+    if (accounts.length >= researchPool) {
       break;
     }
     const layoff = warnSignal(record);
@@ -113,7 +127,6 @@ async function main() {
     }
     // Guard against two filings in this same batch resolving to one company.
     known.add(domain);
-    resolvedDomains.push(domain);
 
     const signals: AccountSignal[] = [layoff];
     const postings = await fetchJobPostings(domain);
@@ -138,7 +151,15 @@ async function main() {
     return;
   }
 
-  const drafts: Draft[] = rankAccounts(accounts).map((account) => {
+  // Rank the whole researched pool, then keep the strongest `limit`. The cap
+  // applies here rather than to research, so the score decides who gets
+  // contacted instead of whoever WARN happened to list first.
+  const chosen = rankAccounts(accounts).slice(0, limit);
+  console.log(
+    `\nResearched ${accounts.length} account(s), contacting the top ${chosen.length}.`,
+  );
+
+  const drafts: Draft[] = chosen.map((account) => {
     const composed = composeEnterpriseEmail(account);
     return {
       business: account.company,
@@ -154,7 +175,19 @@ async function main() {
 
   // Every resolved domain is recorded even when it does not become a draft, so
   // a dead end is never paid for at the Places API twice.
-  let updated = recordDiscovered(ledger, resolvedDomains);
+  // Only the accounts we are actually drafting get recorded.
+  //
+  // Marking the whole research pool discovered would suppress it forever,
+  // because ledgerKnownDomains treats discovered as ineligible. Researching
+  // three times the cap and then permanently burning the two thirds that
+  // scored lower is exactly backwards: those are strong accounts we chose not
+  // to mail yet. They cost another Places lookup when they resurface, which
+  // is far cheaper than never contacting them, and their filing ages out of
+  // the window on its own.
+  let updated = recordDiscovered(
+    ledger,
+    chosen.map((account) => account.domain),
+  );
 
   if (dryRun) {
     console.log(`\nDry run: ${drafts.length} draft(s), ledger not written.`);
