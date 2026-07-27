@@ -100,8 +100,15 @@ jobs:
           fi
 
           echo "Evaluating check runs for $HEAD_SHA ..."
+          # Only the newest run per check name. GitHub keeps the old check run
+          # when a job is re-run, so a failure that was since re-run green
+          # stays on the commit forever and the strict gate below would refuse
+          # to merge a PR whose latest results are all passing. Sorting by id
+          # and taking the last per name keeps the current answer.
           CHECKS=$(gh api --paginate "repos/$REPO/commits/$HEAD_SHA/check-runs" \
-            --jq '.check_runs[] | {name, status, conclusion}')
+            --jq '[.check_runs[] | {id, name, status, conclusion}]' \
+            | jq -s -c 'add | sort_by(.id) | group_by(.name) | map(.[-1]) | .[]
+                        | {name, status, conclusion}')
 
           FILTERED=$(echo "$CHECKS" | jq -c --argjson ex "$EXCLUDE_CHECKS" \
             'select((.name) as $n | ($ex | index($n)) | not)')
