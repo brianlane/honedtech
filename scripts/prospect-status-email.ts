@@ -8,6 +8,7 @@
 //
 // Env: CLOUDFLARE_API_TOKEN, OUTREACH_KV_NAMESPACE_ID, STATUS_URL,
 //      DIGEST_SECRET, optional FORCE_STATUS=1, optional DRY_RUN=1
+import { verticalBreakdown } from '../src/lib/prospect/ledger';
 import {
   buildSnapshot,
   describeChanges,
@@ -96,6 +97,10 @@ async function main() {
         changes,
         stats: next.stats,
         dueDomains: next.dueDomains,
+        // Ride-along context, deliberately not part of the change detection:
+        // the breakdown only moves when contacted or outcomes move, and both
+        // already live in the snapshot.
+        byVertical: verticalBreakdown(ledger),
       }),
     });
   } catch (err) {

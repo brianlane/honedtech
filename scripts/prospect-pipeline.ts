@@ -83,6 +83,9 @@ async function main() {
   }
 
   const drafts: Draft[] = [];
+  // Which trade each drafted domain was discovered under, recorded so the
+  // per-vertical outcome breakdown has something to group by.
+  const verticalByDomain: Record<string, string> = {};
   for (const prospect of prospects) {
     process.stdout.write(`Probing ${prospect.domain} ... `);
     const probe = await probeDomain(prospect.domain);
@@ -104,6 +107,9 @@ async function main() {
       knownEmails.add(normalizeEmail(to));
     }
 
+    if (prospect.vertical) {
+      verticalByDomain[prospect.domain] = prospect.vertical;
+    }
     const email = composeEmail(prospect, findings);
     const body = await polishWithGemini(email.body);
     drafts.push({
@@ -147,6 +153,8 @@ async function main() {
       updated,
       drafts.map((d) => d.domain),
       drafts.map((d) => d.to).filter((to) => to.length > 0),
+      new Date(),
+      verticalByDomain,
     );
     // Merged rather than overwritten: a hand-run optout or reply landing while
     // this pipeline was working must not be erased by our older snapshot.

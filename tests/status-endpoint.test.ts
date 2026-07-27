@@ -79,6 +79,40 @@ describe('POST /api/internal/status', () => {
     expect(sent.html).toContain('No follow-ups due.');
   });
 
+  it('renders the per-vertical breakdown when provided, dropping malformed rows', async () => {
+    const res = await POST(
+      makeContext(
+        {
+          ...PAYLOAD,
+          byVertical: [
+            { vertical: 'Pest Control', contacted: 5, replied: 1, booked: 1 },
+            null,
+            'junk',
+            { vertical: 42, contacted: 5, replied: 1, booked: 1 },
+            { vertical: 'HVAC & Plumbing', contacted: 'five', replied: 1, booked: 1 },
+            { vertical: 'HVAC & Plumbing', contacted: 5, replied: 'one', booked: 1 },
+            { vertical: 'HVAC & Plumbing', contacted: 5, replied: 1, booked: 'one' },
+          ],
+        },
+        'top-secret',
+      ),
+    );
+    expect(res.status).toBe(200);
+    const sent = vi.mocked(env.EMAIL.send).mock.calls[0][0] as Record<string, unknown>;
+    expect(sent.text).toContain('By vertical:');
+    expect(sent.text).toContain('Pest Control: 5 contacted, 1 replied, 1 booked');
+    expect(sent.text).not.toContain('HVAC');
+    expect(sent.html).toContain('<h3>By vertical</h3>');
+  });
+
+  it('omits the vertical section when the breakdown is absent or empty', async () => {
+    const res = await POST(makeContext({ ...PAYLOAD, byVertical: [] }, 'top-secret'));
+    expect(res.status).toBe(200);
+    const sent = vi.mocked(env.EMAIL.send).mock.calls[0][0] as Record<string, unknown>;
+    expect(sent.text).not.toContain('By vertical:');
+    expect(sent.html).not.toContain('By vertical');
+  });
+
   it('falls back to the raw key for an unlabeled stat and drops junk entries', async () => {
     const res = await POST(
       makeContext(

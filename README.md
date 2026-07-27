@@ -105,10 +105,38 @@ The em dash (U+2014) is banned in any context: code, comments, docs, commit
 messages, UI copy. Use a comma, colon, period, or plain hyphen instead. CI
 fails if one appears in any tracked file. See [AGENTS.md](AGENTS.md).
 
-## Workflow
+## All work and code modifications must follow this flow
 
-Branch -> PR -> babysit CI to green -> merge. Never commit directly to main.
-Production deploys run from CI on pushes to main.
+For any change use a worktree and never stop to ask for permission to
+continue: **branch (in a worktree) -> PR -> babysit CI + review to green ->
+merge**. Never commit directly to main. Production deploys run from CI on
+pushes to main only. After a successful merge, return to main and pull, then
+**clean up the worktree** (mandatory, below).
+
+### Worktree cleanup (mandatory after merge)
+
+Never leave a worktree behind once its PR is merged. Orphaned worktrees can
+leave dev processes running for days, pinning CPU and draining the battery.
+After returning to main:
+
+1. **Kill anything still running out of the worktree** - dev servers
+   especially. Check with `ps aux | grep honedtech-wt-` (or
+   `lsof +D /Users/brianlane/honedtech-wt-<name>`) and kill any PIDs found
+   (`kill`, then `kill -9` if they do not die).
+2. **Re-anchor every shell OUT of the worktree BEFORE removing it** -
+   `cd /Users/brianlane/honedtech` in the session shell (agents: run the next
+   command with an explicit `working_directory` on the main checkout). A
+   persistent shell left cd'd inside a deleted worktree fails every subsequent
+   command - silently no-status, or `spawn /bin/bash ENOENT` - which presents
+   as "Execution backend unavailable" and looks like a dead terminal backend
+   needing a Cursor restart. It is not the backend; it is the stale cwd. Fix it
+   by pointing the next command at the main checkout, not by restarting.
+3. **Remove the worktree** from the main repo:
+   `git worktree remove /Users/brianlane/honedtech-wt-<name>` then
+   `git worktree prune`. Worktrees live at `/Users/brianlane/honedtech-wt-*`.
+4. **Delete the merged local branch**: `git branch -d <branch>`.
+5. **Verify**: `git worktree list` shows only the main checkout, and
+   `ps aux | grep honedtech-wt-` finds nothing.
 
 ## CI/CD ([.github/workflows/ci.yml](.github/workflows/ci.yml))
 

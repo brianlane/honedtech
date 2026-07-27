@@ -54,33 +54,49 @@ const EXCLUDED_HOSTS = [
   'ubereats.com',
 ];
 
-// Every vertical x city x term combination, in a stable order.
+// Every vertical x city x term combination, interleaved round-robin across
+// verticals. Grouping by vertical instead would hand each trade a contiguous
+// block of 16-24 queries, and the sliding daily window then serves one trade
+// for weeks straight (an all-pest-control month, then an all-law-firm month).
+// Interleaving makes any contiguous window span as many trades as it has
+// queries.
 function allCombinations(): SearchQuery[] {
-  const out: SearchQuery[] = [];
-  for (const vertical of verticals) {
+  const perVertical: SearchQuery[][] = verticals.map((vertical) => {
+    const queries: SearchQuery[] = [];
     for (const city of CITIES) {
       for (const term of vertical.searchTerms) {
-        out.push({
+        queries.push({
           textQuery: `${term} in ${city}`,
           vertical: vertical.name,
           city,
         });
       }
     }
+    return queries;
+  });
+
+  const longest = Math.max(...perVertical.map((queries) => queries.length));
+  const out: SearchQuery[] = [];
+  for (let i = 0; i < longest; i += 1) {
+    for (const queries of perVertical) {
+      if (i < queries.length) {
+        out.push(queries[i]);
+      }
+    }
   }
   return out;
 }
 
-// Picks the queries for one run. Rotating by day spreads coverage across every
-// vertical and city over time instead of exhausting one trade first, and caps
-// how many paid Places calls a single run can make.
+// Picks the queries for one run. The start advances by a full run each day,
+// so consecutive runs use disjoint queries instead of re-buying yesterday's
+// Places searches, and the cap bounds what a single run can spend.
 export function buildSearchPlan(dayIndex: number, queriesPerRun: number): SearchQuery[] {
   const all = allCombinations();
   if (queriesPerRun <= 0 || all.length === 0) {
     return [];
   }
   const count = Math.min(queriesPerRun, all.length);
-  const start = ((dayIndex % all.length) + all.length) % all.length;
+  const start = (((dayIndex * count) % all.length) + all.length) % all.length;
   const plan: SearchQuery[] = [];
   for (let i = 0; i < count; i += 1) {
     plan.push(all[(start + i) % all.length]);

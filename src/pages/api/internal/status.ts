@@ -17,6 +17,27 @@ interface StatusPayload {
   changes?: string[];
   stats?: Record<string, number>;
   dueDomains?: string[];
+  byVertical?: unknown[];
+}
+
+interface VerticalRow {
+  vertical: string;
+  contacted: number;
+  replied: number;
+  booked: number;
+}
+
+function isVerticalRow(value: unknown): value is VerticalRow {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+  const row = value as Partial<VerticalRow>;
+  return (
+    typeof row.vertical === 'string' &&
+    typeof row.contacted === 'number' &&
+    typeof row.replied === 'number' &&
+    typeof row.booked === 'number'
+  );
 }
 
 const STAT_LABELS: Record<string, string> = {
@@ -54,6 +75,7 @@ export const POST: APIRoute = async ({ request }) => {
   const dueDomains = (payload.dueDomains ?? []).filter(
     (d) => typeof d === 'string',
   );
+  const byVertical = (payload.byVertical ?? []).filter(isVerticalRow);
   if (changes.length === 0 && Object.keys(stats).length === 0) {
     return new Response('Nothing to report', { status: 400 });
   }
@@ -63,12 +85,19 @@ export const POST: APIRoute = async ({ request }) => {
     return `${label}: ${value}${key === 'replyRate' ? '%' : ''}`;
   });
 
+  const verticalLines = byVertical.map(
+    (v) => `${v.vertical}: ${v.contacted} contacted, ${v.replied} replied, ${v.booked} booked`,
+  );
+
   const text = [
     'What changed this week:',
     ...changes.map((c) => `- ${c}`),
     '',
     'Current totals:',
     ...statLines.map((l) => `- ${l}`),
+    ...(verticalLines.length
+      ? ['', 'By vertical:', ...verticalLines.map((l) => `- ${l}`)]
+      : []),
     ...(dueDomains.length
       ? ['', `Follow-ups due (${dueDomains.length}):`, ...dueDomains.map((d) => `- ${d}`)]
       : ['', 'No follow-ups due.']),
@@ -82,6 +111,11 @@ export const POST: APIRoute = async ({ request }) => {
     '</ul><h3>Current totals</h3><ul>',
     ...statLines.map((l) => `<li>${escapeHtml(l)}</li>`),
     '</ul>',
+    verticalLines.length
+      ? `<h3>By vertical</h3><ul>${verticalLines
+          .map((l) => `<li>${escapeHtml(l)}</li>`)
+          .join('')}</ul>`
+      : '',
     dueDomains.length
       ? `<h3>Follow-ups due (${dueDomains.length})</h3><ul>${dueDomains
           .map((d) => `<li>${escapeHtml(d)}</li>`)

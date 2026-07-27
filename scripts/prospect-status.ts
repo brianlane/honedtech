@@ -3,13 +3,18 @@
 //
 // Usage:
 //   npm run prospect:status
-import { dueForFollowUp, ledgerStats } from '../src/lib/prospect/ledger';
+import {
+  dueForFollowUp,
+  ledgerStats,
+  verticalBreakdown,
+} from '../src/lib/prospect/ledger';
 import { loadLedger } from './lib/ledger-io';
 
 async function main() {
   const { ledger } = await loadLedger();
   const stats = ledgerStats(ledger);
   const due = dueForFollowUp(ledger);
+  const byVertical = verticalBreakdown(ledger);
 
   console.log('\nOutreach status');
   console.log('---------------');
@@ -23,6 +28,13 @@ async function main() {
   console.log(`  Bounced:         ${stats.bounced}`);
   console.log(`  Opted out:       ${stats.optedOut}`);
   console.log(`  Reply rate:      ${stats.replyRate}%`);
+
+  if (byVertical.length > 0) {
+    console.log('\nBy vertical (contacted / replied / booked):');
+    for (const v of byVertical) {
+      console.log(`  ${v.vertical}: ${v.contacted} / ${v.replied} / ${v.booked}`);
+    }
+  }
 
   if (stats.contacted >= 20 && stats.replyRate < 3) {
     console.log(

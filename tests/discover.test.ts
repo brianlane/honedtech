@@ -22,10 +22,21 @@ describe('buildSearchPlan', () => {
     expect(buildSearchPlan(0, 5)).toHaveLength(5);
   });
 
-  it('rotates so consecutive days start at different queries', () => {
-    const day1 = buildSearchPlan(0, 3);
-    const day2 = buildSearchPlan(3, 3);
-    expect(day1[0].textQuery).not.toBe(day2[0].textQuery);
+  it('gives consecutive days disjoint query sets', () => {
+    const day1 = buildSearchPlan(0, 6);
+    const day2 = buildSearchPlan(1, 6);
+    const seen = new Set(day1.map((q) => q.textQuery));
+    expect(day2.some((q) => seen.has(q.textQuery))).toBe(false);
+  });
+
+  it('spans multiple verticals within a single run', () => {
+    // Interleaved ordering: a 6-query window must never serve one trade.
+    // 208 combinations / 6 per run = 35 distinct daily windows before wrap.
+    for (let day = 0; day < 35; day += 1) {
+      const plan = buildSearchPlan(day, 6);
+      const trades = new Set(plan.map((q) => q.vertical));
+      expect(trades.size).toBeGreaterThan(1);
+    }
   });
 
   it('wraps around the end of the combination list', () => {
