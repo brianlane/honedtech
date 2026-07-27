@@ -155,7 +155,10 @@ jobs:
           PUBLIC_CF_BEACON_TOKEN: ${{ vars.PUBLIC_CF_BEACON_TOKEN }}
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
-            echo "CLOUDFLARE_API_TOKEN secret not set, skipping deploy."
-            exit 0
+            # Deliberately fatal. Exiting 0 here marked the deploy green while
+            # nothing shipped, so a rotated or missing secret left production
+            # on an old build with no signal anywhere that it had happened.
+            echo "::error::CLOUDFLARE_API_TOKEN is not set, so nothing was deployed. Production is still on the previous build. Set the repository secret and re-run."
+            exit 1
           fi
           npm run deploy
