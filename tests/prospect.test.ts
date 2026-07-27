@@ -798,6 +798,26 @@ describe('ledger', () => {
       // 2 of the 4 sent produced a reply.
       expect(stats.replyRate).toBe(50);
     });
+
+    // Both sides of a rate have to count the same population. An outcome on a
+    // domain with no send on record (a send logged as a reply but never as a
+    // send) would otherwise be a numerator with no denominator.
+    it('leaves the rate alone for an outcome with no send on record', () => {
+      let ledger = recordContacted(EMPTY, ['drafted.com']);
+      ledger = recordOutcome(ledger, 'drafted.com', 'booked');
+      const stats = ledgerStats(ledger);
+      expect(stats.booked).toBe(1);
+      expect(stats.sent).toBe(0);
+      expect(stats.replyRate).toBe(0);
+
+      const withOneSend = recordOutcome(
+        recordSent(ledger, ['sent.com']),
+        'sent.com',
+        'replied',
+      );
+      // One send, one reply to it: 100%, not 200%.
+      expect(ledgerStats(withOneSend).replyRate).toBe(100);
+    });
   });
 
   describe('verticalBreakdown', () => {

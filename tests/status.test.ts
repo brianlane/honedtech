@@ -132,8 +132,21 @@ describe('describeChanges', () => {
     const changes = describeChanges(legacy, buildSnapshot(ledger, NOW));
     // Drafted was stored under the old name, so this is +1 and not +4.
     expect(changes).toContain('Drafted: 3 to 4 (+1)');
+    // Nothing recorded a send back then, so all 3 counted as pending. One of
+    // the 4 drafts has been sent since, which leaves the pending count at 3.
+    expect(changes.some((c) => c.startsWith('Drafts pending:'))).toBe(false);
     expect(changes).toContain('Sent: 0 to 1 (+1)');
     expect(changes.some((c) => c.includes('undefined'))).toBe(false);
+  });
+
+  it('reports an unchanged backlog as unchanged after the shape change', () => {
+    const legacy = parseSnapshot(
+      JSON.stringify({ stats: { discovered: 3, contacted: 3 }, dueDomains: [] }),
+    );
+    const sameBacklog = buildSnapshot(recordContacted(EMPTY, ['a.com', 'b.com', 'c.com']), NOW);
+    const changes = describeChanges(legacy, sameBacklog);
+    expect(changes.some((c) => c.startsWith('Drafts pending:'))).toBe(false);
+    expect(changes.some((c) => c.startsWith('Drafted:'))).toBe(false);
   });
 
   it('reports outcome counters and the reply rate', () => {

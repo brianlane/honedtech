@@ -59,11 +59,14 @@ export function snapshotChanged(
   return serializeSnapshot(previous) !== serializeSnapshot(next);
 }
 
-// `drafted` was stored as `contacted` before drafting and sending were told
-// apart, so the old name is read as a fallback. Without it the first report
-// after the change would call every previously drafted domain new this week.
-const RENAMED_STATS: Partial<Record<keyof LedgerStats, string>> = {
+// Where a counter's value lives in a snapshot written before drafting and
+// sending were told apart. `drafted` was simply called `contacted` back then,
+// and every drafted domain was pending by definition, because nothing recorded
+// a send at all. Without these two the first report after the change would
+// call an unchanged backlog brand new.
+const LEGACY_STAT_KEYS: Partial<Record<keyof LedgerStats, string>> = {
   drafted: 'contacted',
+  pendingDrafts: 'contacted',
 };
 
 // A stored snapshot is JSON from an earlier version of this file, so a counter
@@ -71,7 +74,7 @@ const RENAMED_STATS: Partial<Record<keyof LedgerStats, string>> = {
 // report after a shape change diff cleanly instead of saying "undefined to 15".
 function statValue(stats: LedgerStats, key: keyof LedgerStats): number {
   const loose = stats as unknown as Record<string, number | undefined>;
-  const legacyKey = RENAMED_STATS[key];
+  const legacyKey = LEGACY_STAT_KEYS[key];
   const value = loose[key] ?? (legacyKey ? loose[legacyKey] : undefined);
   return typeof value === 'number' ? value : 0;
 }

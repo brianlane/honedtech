@@ -500,8 +500,15 @@ export function ledgerStats(ledger: OutreachLedger): LedgerStats {
   const sentDomains = Object.keys(ledger.sentAt);
   const sent = sentDomains.length;
   const skipped = new Set(ledger.skipped);
-  // A booking is a reply too, so both count toward the rate.
-  const anyReply = counts.replied + counts.booked;
+  // A booking is a reply too, so both count toward the rate. Counted over the
+  // sent domains rather than over every outcome on record, because the two
+  // sides of a rate have to describe the same population: an outcome logged
+  // against a domain with no send on record would otherwise push the rate
+  // above 100%.
+  const anyReply = sentDomains.filter((d) => {
+    const status = ledger.outcomes[d]?.status;
+    return status === 'replied' || status === 'booked';
+  }).length;
   return {
     discovered: ledger.discovered.length,
     drafted: ledger.contacted.length,
