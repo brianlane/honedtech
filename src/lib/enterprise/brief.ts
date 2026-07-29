@@ -27,6 +27,10 @@ export function enterpriseUrl(): string {
   return `${SITE}/enterprise?${params.toString()}`;
 }
 
+export function bookingUrl(): string {
+  return 'https://www.newcoworker.com/book/newcoworker/honed-tech';
+}
+
 // Deep-links the seat-reclaim estimate with the numbers we already inferred,
 // so a reader who is not ready to reply still lands on their own figures.
 // Returns '' when we have no seat count worth showing.
@@ -119,7 +123,8 @@ export function composeEnterpriseEmail(
     )}: seat-by-seat license utilization, duplicate tooling, and an executive report with the exact savings. If I cannot find the fee back in recoverable spend, I will say so plainly.`,
   );
   lines.push('');
-  lines.push(`Worth a short call? Details here: ${enterpriseUrl()}`);
+  lines.push(`Worth a short call? Grab a time here: ${bookingUrl()}`);
+  lines.push(`Details on the audit: ${enterpriseUrl()}`);
 
   const calc = reclaimUrl(seats);
   if (calc) {
