@@ -382,6 +382,7 @@ describe('composeEmail + url helpers', () => {
     expect(email.body).toContain('acme.com');
     expect(email.body).toContain('$299');
     expect(email.body).toContain('unsubscribe');
+    expect(email.body).toContain('https://www.newcoworker.com/book/newcoworker/honed-tech');
     expect(email.body).toContain('/audits/hvac-plumbing');
   });
 

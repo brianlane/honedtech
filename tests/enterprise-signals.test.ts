@@ -698,6 +698,7 @@ describe('brief and email composition', () => {
     expect(email.body).toContain('shrank by 240');
     expect(email.body).toContain('Also worth a look:');
     expect(email.body).toContain('$2,499');
+    expect(email.body).toContain('https://www.newcoworker.com/book/newcoworker/honed-tech');
     expect(email.body).toContain('/enterprise?');
     expect(email.body).toContain('r=240');
     expect(email.body).toContain('unsubscribe');

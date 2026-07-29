@@ -45,6 +45,10 @@ export function auditUrl(vertical: string | undefined): string {
   return `${SITE}${path}?${params.toString()}`;
 }
 
+export function bookingUrl(): string {
+  return 'https://www.newcoworker.com/book/newcoworker/honed-tech';
+}
+
 // Detected findings map onto calculator options, so a prospect who is not
 // ready to reply can open the calculator already showing their own numbers.
 const FINDING_TO_CALC: Partial<Record<FindingCode, string>> = {
@@ -132,7 +136,8 @@ export function composeEmail(
     `A full audit is a flat ${money(299)}: I review every subscription, license, and tool, then hand you a written report with the exact savings and a fix plan. If I cannot find at least the audit fee in savings, I will tell you plainly.`,
   );
   lines.push('');
-  lines.push(`Worth a 15-minute look? Details here: ${auditUrl(prospect.vertical)}`);
+  lines.push(`Worth a quick look? Grab a time here: ${bookingUrl()}`);
+  lines.push(`Details on the audit: ${auditUrl(prospect.vertical)}`);
   const calcUrl = calculatorUrl(findings);
   if (calcUrl) {
     lines.push('');
