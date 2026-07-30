@@ -12,7 +12,7 @@ import {
   normalizeDomain,
   recordOutcome,
 } from '../src/lib/prospect/ledger';
-import { loadLedger } from './lib/ledger-io';
+import { loadLedgerForDomains } from './lib/ledger-io';
 
 async function main() {
   const [rawDomain, rawStatus] = process.argv.slice(2);
@@ -30,9 +30,10 @@ async function main() {
   }
 
   const domain = normalizeDomain(rawDomain);
-  const { ledger, save } = await loadLedger();
+  const { key, ledger, save } = await loadLedgerForDomains([domain]);
   await save(recordOutcome(ledger, domain, status));
 
+  console.log(`Ledger: ${key}`);
   console.log(`  ${domain} recorded as ${status}`);
   if (status === 'declined' || status === 'bounced') {
     console.log('  Also suppressed, so it will never be contacted again.');

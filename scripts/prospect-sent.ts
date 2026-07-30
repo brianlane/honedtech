@@ -12,7 +12,7 @@ import {
   normalizeEmail,
   recordSent,
 } from '../src/lib/prospect/ledger';
-import { loadLedger } from './lib/ledger-io';
+import { loadLedgerForDomains } from './lib/ledger-io';
 
 async function main() {
   const inputs = process.argv.slice(2).filter((a) => a.trim().length > 0);
@@ -30,11 +30,12 @@ async function main() {
     ...emails.map((e) => normalizeDomain(e.split('@')[1] ?? '')),
   ].filter((d) => d.length > 0);
 
-  const { ledger, save } = await loadLedger();
+  const { key, ledger, save } = await loadLedgerForDomains(domains);
   const alreadySent = { ...ledger.sentAt };
   const updated = recordSent(ledger, domains, emails);
   await save(updated);
 
+  console.log(`Ledger: ${key}`);
   for (const domain of domains) {
     console.log(
       alreadySent[domain]

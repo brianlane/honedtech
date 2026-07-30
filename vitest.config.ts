@@ -25,6 +25,7 @@ export default defineConfig({
         'src/lib/turnstile.ts',
         'src/lib/internal.ts',
         'src/lib/email-auth.ts',
+        'src/lib/env-file.ts',
       ],
       thresholds: {
         statements: 100,

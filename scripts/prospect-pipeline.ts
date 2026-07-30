@@ -25,11 +25,9 @@ import {
 import type { Finding } from '../src/lib/prospect/types';
 import { discoverProspects } from './lib/places';
 import { probeDomain } from './lib/probe';
-import { readLedgerStrict, saveLedgerMerged } from './lib/ledger-io';
+import { LEDGER_KEY, readLedgerStrict, requiredEnv, saveLedgerMerged } from './lib/ledger-io';
 import { parseRunLimit } from '../src/lib/prospect/limits';
 import { polishWithGemini } from './lib/polish';
-
-const LEDGER_KEY = 'outreach-ledger';
 
 interface Draft {
   business: string;
@@ -40,22 +38,13 @@ interface Draft {
   findingCount: number;
 }
 
-function required(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    console.error(`${name} is not set.`);
-    process.exit(1);
-  }
-  return value;
-}
-
 async function main() {
   const limit = parseRunLimit(process.argv[2] ?? process.env.PROSPECT_LIMIT, 12);
   const dryRun = process.env.DRY_RUN === '1';
 
-  const placesKey = required('GOOGLE_PLACES_API_KEY');
-  const cfToken = required('CLOUDFLARE_API_TOKEN');
-  const namespaceId = required('OUTREACH_KV_NAMESPACE_ID');
+  const placesKey = requiredEnv('GOOGLE_PLACES_API_KEY');
+  const cfToken = requiredEnv('CLOUDFLARE_API_TOKEN');
+  const namespaceId = requiredEnv('OUTREACH_KV_NAMESPACE_ID');
 
   console.log(`Pipeline start (limit ${limit}${dryRun ? ', dry run' : ''})`);
 

@@ -6,6 +6,7 @@
 //   npm run prospect:discover -- 15
 import { appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { buildSuppressionSet, normalizeDomain } from '../src/lib/prospect/ledger';
+import { requiredEnv } from './lib/ledger-io';
 import { discoverProspects } from './lib/places';
 
 async function readOptional(path: string): Promise<string> {
@@ -18,11 +19,7 @@ async function readOptional(path: string): Promise<string> {
 
 async function main() {
   const limit = Number(process.argv[2] ?? '15');
-  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
-  if (!apiKey) {
-    console.error('GOOGLE_PLACES_API_KEY is not set (see .env).');
-    process.exit(1);
-  }
+  const apiKey = requiredEnv('GOOGLE_PLACES_API_KEY');
 
   // Never rediscover a domain already listed, contacted, or opted out.
   const existingCsv = await readOptional('outreach/prospects.csv');

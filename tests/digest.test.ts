@@ -143,6 +143,16 @@ describe('POST /api/internal/digest', () => {
     expect(sent.text).toContain('Nothing has been sent yet');
     expect(sent.text).toContain('npm run prospect:sent');
     expect(sent.text).toContain('npm run prospect:skip');
+    // Each draft carries the concrete log command so it is not missed when
+    // scrolling past the intro.
+    expect(sent.text).toContain('After you send, log it (not automatic):');
+    expect(sent.text).toContain(
+      'npm run prospect:sent -- acme.com owner@acme.com',
+    );
+    expect(sent.html).toContain('After you send, log it (not automatic):');
+    expect(sent.html).toContain(
+      'npm run prospect:sent -- acme.com owner@acme.com',
+    );
     // Business names are escaped in the HTML part.
     expect(sent.html).toContain('Acme &lt;HVAC&gt;');
   });
@@ -155,6 +165,8 @@ describe('POST /api/internal/digest', () => {
     const sent = vi.mocked(env.EMAIL.send).mock.calls[0][0] as Record<string, unknown>;
     expect(sent.text).toContain('NO EMAIL FOUND');
     expect(sent.html).toContain('NO EMAIL FOUND');
+    expect(sent.text).toContain('npm run prospect:sent -- acme.com <address>');
+    expect(sent.html).toContain('npm run prospect:sent -- acme.com &lt;address&gt;');
   });
 
   it('falls back through business, domain, then unknown in the heading', async () => {
@@ -173,6 +185,8 @@ describe('POST /api/internal/digest', () => {
     const sent = vi.mocked(env.EMAIL.send).mock.calls[0][0] as Record<string, unknown>;
     expect(sent.text).toContain('only-domain.com');
     expect(sent.text).toContain('unknown');
+    expect(sent.text).toContain('npm run prospect:sent -- only-domain.com <address>');
+    expect(sent.text).toContain('npm run prospect:sent -- <domain> <address>');
   });
 
   it('renders an enterprise research brief above the draft', async () => {

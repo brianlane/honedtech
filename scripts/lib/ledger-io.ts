@@ -1,16 +1,21 @@
 // Shared load/save for the outreach ledger, so every command talks to the
 // same KV key and fails the same way when config is missing.
 import {
+  ledgerTracksDomain,
   mergeLedgers,
+  normalizeDomain,
   parseLedgerResult,
   serializeLedger,
   type OutreachLedger,
 } from '../../src/lib/prospect/ledger';
 import { kvGet, kvPut } from './kv';
+import { loadDotEnv } from './load-env';
 
 export const LEDGER_KEY = 'outreach-ledger';
+export const ENTERPRISE_LEDGER_KEY = 'enterprise-ledger';
 
 export function requiredEnv(name: string): string {
+  loadDotEnv();
   const value = process.env[name];
   if (!value) {
     console.error(`${name} is not set (see .env).`);
@@ -20,6 +25,7 @@ export function requiredEnv(name: string): string {
 }
 
 export interface LedgerHandle {
+  key: string;
   ledger: OutreachLedger;
   save: (next: OutreachLedger) => Promise<void>;
 }
@@ -67,12 +73,33 @@ export async function saveLedgerMerged(
   await kvPut(token, namespaceId, key, serializeLedger(merged));
 }
 
-export async function loadLedger(): Promise<LedgerHandle> {
+export async function loadLedger(key: string = LEDGER_KEY): Promise<LedgerHandle> {
   const token = requiredEnv('CLOUDFLARE_API_TOKEN');
   const namespaceId = requiredEnv('OUTREACH_KV_NAMESPACE_ID');
-  const ledger = await readLedgerStrict(token, namespaceId, LEDGER_KEY);
+  const ledger = await readLedgerStrict(token, namespaceId, key);
   return {
+    key,
     ledger,
-    save: (next) => saveLedgerMerged(token, namespaceId, LEDGER_KEY, next),
+    save: (next) => saveLedgerMerged(token, namespaceId, key, next),
   };
+}
+
+// Picks enterprise-ledger when any input domain is already tracked there,
+// otherwise the SMB outreach-ledger. Durham-style enterprise drafts must not
+// land their sent/skip/reply marks on the wrong key.
+export async function loadLedgerForDomains(domains: string[]): Promise<LedgerHandle> {
+  const token = requiredEnv('CLOUDFLARE_API_TOKEN');
+  const namespaceId = requiredEnv('OUTREACH_KV_NAMESPACE_ID');
+  const bare = domains.map(normalizeDomain).filter((d) => d.length > 0);
+
+  const enterprise = await readLedgerStrict(token, namespaceId, ENTERPRISE_LEDGER_KEY);
+  if (bare.some((domain) => ledgerTracksDomain(enterprise, domain))) {
+    return {
+      key: ENTERPRISE_LEDGER_KEY,
+      ledger: enterprise,
+      save: (next) => saveLedgerMerged(token, namespaceId, ENTERPRISE_LEDGER_KEY, next),
+    };
+  }
+
+  return loadLedger(LEDGER_KEY);
 }
