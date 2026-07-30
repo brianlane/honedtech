@@ -32,14 +32,14 @@ import {
 import { fetchWarnRecords } from './lib/warn-source';
 import { resolveCompanyDomain } from './lib/places';
 import { fetchJobPostings } from './lib/ats-fetch';
-import { readLedgerStrict, saveLedgerMerged } from './lib/ledger-io';
+import {
+  ENTERPRISE_LEDGER_KEY,
+  readLedgerStrict,
+  requiredEnv,
+  saveLedgerMerged,
+} from './lib/ledger-io';
 import { parseRunLimit } from '../src/lib/prospect/limits';
 import { resolveWarnStates } from '../src/lib/enterprise/states';
-
-// Deliberately separate from the SMB "outreach-ledger" so the two tracks never
-// suppress each other. A local plumber and a 400-person employer are different
-// conversations even in the unlikely case they share a domain.
-const LEDGER_KEY = 'enterprise-ledger';
 
 // How many accounts to research per account contacted. Three keeps the extra
 // Places spend modest while giving the score a real choice to make.
@@ -55,22 +55,13 @@ interface Draft {
   findingCount: number;
 }
 
-function required(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    console.error(`${name} is not set.`);
-    process.exit(1);
-  }
-  return value;
-}
-
 async function main() {
   const limit = parseRunLimit(process.argv[2] ?? process.env.ENTERPRISE_LIMIT, 6);
   const dryRun = process.env.DRY_RUN === '1';
 
-  const cfToken = required('CLOUDFLARE_API_TOKEN');
-  const namespaceId = required('OUTREACH_KV_NAMESPACE_ID');
-  const placesKey = required('GOOGLE_PLACES_API_KEY');
+  const cfToken = requiredEnv('CLOUDFLARE_API_TOKEN');
+  const namespaceId = requiredEnv('OUTREACH_KV_NAMESPACE_ID');
+  const placesKey = requiredEnv('GOOGLE_PLACES_API_KEY');
   const states = resolveWarnStates(
     process.env.GITHUB_EVENT_NAME,
     process.env.WARN_STATES,
@@ -79,7 +70,7 @@ async function main() {
 
   console.log(`Enterprise pipeline start (limit ${limit}${dryRun ? ', dry run' : ''})`);
 
-  const ledger = await readLedgerStrict(cfToken, namespaceId, LEDGER_KEY);
+  const ledger = await readLedgerStrict(cfToken, namespaceId, ENTERPRISE_LEDGER_KEY);
   const known = ledgerKnownDomains(ledger);
   console.log(`Ledger: ${known.size} known domain(s)`);
 
@@ -210,7 +201,7 @@ async function main() {
     updated,
     drafts.map((d) => d.domain),
   );
-  await saveLedgerMerged(cfToken, namespaceId, LEDGER_KEY, updated);
+  await saveLedgerMerged(cfToken, namespaceId, ENTERPRISE_LEDGER_KEY, updated);
 
   const res = await fetch(digestUrl, {
     method: 'POST',

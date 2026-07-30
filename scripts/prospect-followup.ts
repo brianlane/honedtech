@@ -4,7 +4,7 @@
 // Usage:
 //   npm run prospect:followup -- acme.com [more.com]
 import { normalizeDomain, recordFollowUp } from '../src/lib/prospect/ledger';
-import { loadLedger } from './lib/ledger-io';
+import { loadLedgerBatches } from './lib/ledger-io';
 
 async function main() {
   const inputs = process.argv.slice(2).filter((a) => a.trim().length > 0);
@@ -13,11 +13,15 @@ async function main() {
     process.exit(1);
   }
 
-  const { ledger, save } = await loadLedger();
-  await save(recordFollowUp(ledger, inputs));
+  const domains = inputs.map(normalizeDomain).filter((d) => d.length > 0);
+  const batches = await loadLedgerBatches(domains);
+  for (const { key, domains: batchDomains, handle } of batches) {
+    await handle.save(recordFollowUp(handle.ledger, batchDomains));
 
-  for (const input of inputs) {
-    console.log(`  ${normalizeDomain(input)} follow-up recorded`);
+    console.log(`Ledger: ${key}`);
+    for (const domain of batchDomains) {
+      console.log(`  ${domain} follow-up recorded`);
+    }
   }
   console.log('\nThat is the last touch. No further outreach to these domains.');
 }

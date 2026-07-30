@@ -76,9 +76,19 @@ export const POST: APIRoute = async ({ request }) => {
   const briefLines = (d: Draft): string[] =>
     (d.brief ?? []).filter((line) => typeof line === 'string' && line.length > 0);
 
+  // Digest-only reminder. Never put this in the sendable draft body: that gets
+  // pasted into Gmail and must not go to the prospect.
+  const sentLogCommand = (domain: string | undefined, to: string | undefined): string => {
+    const host = domain && domain.trim().length > 0 ? domain.trim() : '<domain>';
+    const address =
+      to && to.trim().length > 0 && to.includes('@') ? to.trim() : '<address>';
+    return `npm run prospect:sent -- ${host} ${address}`;
+  };
+
   const textParts = drafts.map((d, i) => {
     const to = d.to || 'NO EMAIL FOUND, look up manually';
     const brief = briefLines(d);
+    const command = sentLogCommand(d.domain, d.to);
     return [
       `--- Draft ${i + 1} of ${drafts.length}: ${d.business ?? d.domain ?? 'unknown'} ---`,
       `Domain: ${d.domain ?? 'unknown'}`,
@@ -87,6 +97,9 @@ export const POST: APIRoute = async ({ request }) => {
       ...(brief.length ? ['', 'Research brief:', ...brief.map((l) => `  - ${l}`)] : []),
       '',
       d.body,
+      '',
+      'After you send, log it (not automatic):',
+      `  ${command}`,
       '',
     ].join('\n');
   });
@@ -99,13 +112,17 @@ export const POST: APIRoute = async ({ request }) => {
           .map((line) => `<li>${escapeHtml(line)}</li>`)
           .join('')}</ul>`
       : '';
+    const command = sentLogCommand(d.domain, d.to);
+    const hintHtml = `<p><strong>After you send, log it (not automatic):</strong><br><code>${escapeHtml(
+      command,
+    )}</code></p>`;
     return `<h3>Draft ${i + 1} of ${drafts.length}: ${escapeHtml(
       d.business ?? d.domain ?? 'unknown',
     )}</h3><p><strong>To:</strong> ${escapeHtml(to)}<br><strong>Subject:</strong> ${escapeHtml(
       d.subject,
     )}</p>${briefHtml}<pre style="white-space:pre-wrap;font-family:inherit;background:#f4f6f8;padding:12px;border-radius:6px">${escapeHtml(
       d.body,
-    )}</pre>`;
+    )}</pre>${hintHtml}`;
   });
 
   const followUpText = followUps.length

@@ -24,6 +24,7 @@ import {
   isOutcomeStatus,
   ledgerKnownDomains,
   ledgerKnownEmails,
+  ledgerTracksDomain,
   ledgerStats,
   mergeLedgers,
   normalizeDomain,
@@ -531,6 +532,25 @@ describe('ledger', () => {
       optedOut: ['c.com'],
     });
     expect([...known].sort()).toEqual(['a.com', 'b.com', 'c.com']);
+  });
+
+  it('tracks a domain across every ledger field used for routing', () => {
+    const empty = parseLedger('{}');
+    expect(ledgerTracksDomain(empty, '')).toBe(false);
+    expect(ledgerTracksDomain(empty, 'missing.com')).toBe(false);
+    expect(ledgerTracksDomain({ ...empty, contacted: ['acme.com'] }, 'www.acme.com')).toBe(
+      true,
+    );
+    expect(ledgerTracksDomain({ ...empty, skipped: ['skip.com'] }, 'skip.com')).toBe(true);
+    expect(
+      ledgerTracksDomain({ ...empty, sentAt: { 'sent.com': '2026-01-01T00:00:00.000Z' } }, 'sent.com'),
+    ).toBe(true);
+    expect(
+      ledgerTracksDomain(
+        { ...empty, verticals: { 'vert.com': 'HVAC & Plumbing' } },
+        'vert.com',
+      ),
+    ).toBe(true);
   });
 
   it('records newly discovered domains without duplicating', () => {

@@ -1,16 +1,21 @@
 // Shared load/save for the outreach ledger, so every command talks to the
 // same KV key and fails the same way when config is missing.
 import {
+  ledgerTracksDomain,
   mergeLedgers,
+  normalizeDomain,
   parseLedgerResult,
   serializeLedger,
   type OutreachLedger,
 } from '../../src/lib/prospect/ledger';
 import { kvGet, kvPut } from './kv';
+import { loadDotEnv } from './load-env';
 
 export const LEDGER_KEY = 'outreach-ledger';
+export const ENTERPRISE_LEDGER_KEY = 'enterprise-ledger';
 
 export function requiredEnv(name: string): string {
+  loadDotEnv();
   const value = process.env[name];
   if (!value) {
     console.error(`${name} is not set (see .env).`);
@@ -20,6 +25,7 @@ export function requiredEnv(name: string): string {
 }
 
 export interface LedgerHandle {
+  key: string;
   ledger: OutreachLedger;
   save: (next: OutreachLedger) => Promise<void>;
 }
@@ -67,12 +73,59 @@ export async function saveLedgerMerged(
   await kvPut(token, namespaceId, key, serializeLedger(merged));
 }
 
-export async function loadLedger(): Promise<LedgerHandle> {
+export async function loadLedger(key: string = LEDGER_KEY): Promise<LedgerHandle> {
   const token = requiredEnv('CLOUDFLARE_API_TOKEN');
   const namespaceId = requiredEnv('OUTREACH_KV_NAMESPACE_ID');
-  const ledger = await readLedgerStrict(token, namespaceId, LEDGER_KEY);
+  const ledger = await readLedgerStrict(token, namespaceId, key);
   return {
+    key,
     ledger,
-    save: (next) => saveLedgerMerged(token, namespaceId, LEDGER_KEY, next),
+    save: (next) => saveLedgerMerged(token, namespaceId, key, next),
   };
+}
+
+export interface LedgerBatch {
+  key: string;
+  domains: string[];
+  handle: LedgerHandle;
+}
+
+// Splits domains across enterprise-ledger and outreach-ledger so a mixed
+// batch never writes SMB marks into the enterprise key (or the reverse).
+export async function loadLedgerBatches(domains: string[]): Promise<LedgerBatch[]> {
+  const token = requiredEnv('CLOUDFLARE_API_TOKEN');
+  const namespaceId = requiredEnv('OUTREACH_KV_NAMESPACE_ID');
+  const bare = [...new Set(domains.map(normalizeDomain).filter((d) => d.length > 0))];
+
+  const enterprise = await readLedgerStrict(token, namespaceId, ENTERPRISE_LEDGER_KEY);
+  const enterpriseDomains: string[] = [];
+  const outreachDomains: string[] = [];
+  for (const domain of bare) {
+    if (ledgerTracksDomain(enterprise, domain)) {
+      enterpriseDomains.push(domain);
+    } else {
+      outreachDomains.push(domain);
+    }
+  }
+
+  const batches: LedgerBatch[] = [];
+  if (enterpriseDomains.length > 0) {
+    batches.push({
+      key: ENTERPRISE_LEDGER_KEY,
+      domains: enterpriseDomains,
+      handle: {
+        key: ENTERPRISE_LEDGER_KEY,
+        ledger: enterprise,
+        save: (next) => saveLedgerMerged(token, namespaceId, ENTERPRISE_LEDGER_KEY, next),
+      },
+    });
+  }
+  if (outreachDomains.length > 0) {
+    batches.push({
+      key: LEDGER_KEY,
+      domains: outreachDomains,
+      handle: await loadLedger(LEDGER_KEY),
+    });
+  }
+  return batches;
 }

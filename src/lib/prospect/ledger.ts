@@ -213,6 +213,28 @@ export function ledgerKnownDomains(ledger: OutreachLedger): Set<string> {
   ]);
 }
 
+// True when any ledger field already knows this domain. Used to route hand-run
+// commands (sent/skip/reply/followup) to enterprise-ledger vs outreach-ledger.
+export function ledgerTracksDomain(ledger: OutreachLedger, domain: string): boolean {
+  const bare = normalizeDomain(domain);
+  if (!bare) {
+    return false;
+  }
+  if (ledgerKnownDomains(ledger).has(bare)) {
+    return true;
+  }
+  if (ledger.skipped.includes(bare)) {
+    return true;
+  }
+  return (
+    bare in ledger.contactedAt ||
+    bare in ledger.sentAt ||
+    bare in ledger.followedUpAt ||
+    bare in ledger.outcomes ||
+    bare in ledger.verticals
+  );
+}
+
 // Every address that has already received an email.
 export function ledgerKnownEmails(ledger: OutreachLedger): Set<string> {
   return new Set(ledger.contactedEmails);
