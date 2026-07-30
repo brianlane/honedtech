@@ -12,7 +12,7 @@ import {
   normalizeEmail,
   recordSent,
 } from '../src/lib/prospect/ledger';
-import { loadLedgerForDomains } from './lib/ledger-io';
+import { loadLedgerBatches } from './lib/ledger-io';
 
 async function main() {
   const inputs = process.argv.slice(2).filter((a) => a.trim().length > 0);
@@ -30,23 +30,28 @@ async function main() {
     ...emails.map((e) => normalizeDomain(e.split('@')[1] ?? '')),
   ].filter((d) => d.length > 0);
 
-  const { key, ledger, save } = await loadLedgerForDomains(domains);
-  const alreadySent = { ...ledger.sentAt };
-  const updated = recordSent(ledger, domains, emails);
-  await save(updated);
+  const batches = await loadLedgerBatches(domains);
+  for (const { key, domains: batchDomains, handle } of batches) {
+    const batchEmails = emails.filter((email) =>
+      batchDomains.includes(normalizeDomain(email.split('@')[1] ?? '')),
+    );
+    const alreadySent = { ...handle.ledger.sentAt };
+    const updated = recordSent(handle.ledger, batchDomains, batchEmails);
+    await handle.save(updated);
 
-  console.log(`Ledger: ${key}`);
-  for (const domain of domains) {
+    console.log(`Ledger: ${key}`);
+    for (const domain of batchDomains) {
+      console.log(
+        alreadySent[domain]
+          ? `  ${domain} was already logged as sent`
+          : `  ${domain} logged as sent`,
+      );
+    }
     console.log(
-      alreadySent[domain]
-        ? `  ${domain} was already logged as sent`
-        : `  ${domain} logged as sent`,
+      `  ${Object.keys(updated.sentAt).length} sent domain(s) ` +
+        `out of ${updated.contacted.length} drafted.`,
     );
   }
-  console.log(
-    `\nLedger now records ${Object.keys(updated.sentAt).length} sent domain(s) ` +
-      `out of ${updated.contacted.length} drafted.`,
-  );
 }
 
 main().catch((err) => {

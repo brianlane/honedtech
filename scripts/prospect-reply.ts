@@ -12,7 +12,7 @@ import {
   normalizeDomain,
   recordOutcome,
 } from '../src/lib/prospect/ledger';
-import { loadLedgerForDomains } from './lib/ledger-io';
+import { loadLedgerBatches } from './lib/ledger-io';
 
 async function main() {
   const [rawDomain, rawStatus] = process.argv.slice(2);
@@ -30,10 +30,16 @@ async function main() {
   }
 
   const domain = normalizeDomain(rawDomain);
-  const { key, ledger, save } = await loadLedgerForDomains([domain]);
-  await save(recordOutcome(ledger, domain, status));
+  const batches = await loadLedgerBatches([domain]);
+  const batch = batches[0];
+  if (!batch) {
+    console.error(`No ledger resolved for ${domain}`);
+    process.exit(1);
+  }
 
-  console.log(`Ledger: ${key}`);
+  await batch.handle.save(recordOutcome(batch.handle.ledger, domain, status));
+
+  console.log(`Ledger: ${batch.key}`);
   console.log(`  ${domain} recorded as ${status}`);
   if (status === 'declined' || status === 'bounced') {
     console.log('  Also suppressed, so it will never be contacted again.');

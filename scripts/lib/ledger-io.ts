@@ -84,22 +84,48 @@ export async function loadLedger(key: string = LEDGER_KEY): Promise<LedgerHandle
   };
 }
 
-// Picks enterprise-ledger when any input domain is already tracked there,
-// otherwise the SMB outreach-ledger. Durham-style enterprise drafts must not
-// land their sent/skip/reply marks on the wrong key.
-export async function loadLedgerForDomains(domains: string[]): Promise<LedgerHandle> {
+export interface LedgerBatch {
+  key: string;
+  domains: string[];
+  handle: LedgerHandle;
+}
+
+// Splits domains across enterprise-ledger and outreach-ledger so a mixed
+// batch never writes SMB marks into the enterprise key (or the reverse).
+export async function loadLedgerBatches(domains: string[]): Promise<LedgerBatch[]> {
   const token = requiredEnv('CLOUDFLARE_API_TOKEN');
   const namespaceId = requiredEnv('OUTREACH_KV_NAMESPACE_ID');
-  const bare = domains.map(normalizeDomain).filter((d) => d.length > 0);
+  const bare = [...new Set(domains.map(normalizeDomain).filter((d) => d.length > 0))];
 
   const enterprise = await readLedgerStrict(token, namespaceId, ENTERPRISE_LEDGER_KEY);
-  if (bare.some((domain) => ledgerTracksDomain(enterprise, domain))) {
-    return {
-      key: ENTERPRISE_LEDGER_KEY,
-      ledger: enterprise,
-      save: (next) => saveLedgerMerged(token, namespaceId, ENTERPRISE_LEDGER_KEY, next),
-    };
+  const enterpriseDomains: string[] = [];
+  const outreachDomains: string[] = [];
+  for (const domain of bare) {
+    if (ledgerTracksDomain(enterprise, domain)) {
+      enterpriseDomains.push(domain);
+    } else {
+      outreachDomains.push(domain);
+    }
   }
 
-  return loadLedger(LEDGER_KEY);
+  const batches: LedgerBatch[] = [];
+  if (enterpriseDomains.length > 0) {
+    batches.push({
+      key: ENTERPRISE_LEDGER_KEY,
+      domains: enterpriseDomains,
+      handle: {
+        key: ENTERPRISE_LEDGER_KEY,
+        ledger: enterprise,
+        save: (next) => saveLedgerMerged(token, namespaceId, ENTERPRISE_LEDGER_KEY, next),
+      },
+    });
+  }
+  if (outreachDomains.length > 0) {
+    batches.push({
+      key: LEDGER_KEY,
+      domains: outreachDomains,
+      handle: await loadLedger(LEDGER_KEY),
+    });
+  }
+  return batches;
 }

@@ -6,7 +6,7 @@
 // Usage:
 //   npm run prospect:skip -- acme.com [more.com]
 import { normalizeDomain, recordSkipped } from '../src/lib/prospect/ledger';
-import { loadLedgerForDomains } from './lib/ledger-io';
+import { loadLedgerBatches } from './lib/ledger-io';
 
 async function main() {
   const inputs = process.argv.slice(2).filter((a) => a.trim().length > 0);
@@ -16,20 +16,22 @@ async function main() {
   }
 
   const domains = inputs.map(normalizeDomain).filter((d) => d.length > 0);
-  const { key, ledger, save } = await loadLedgerForDomains(domains);
-  const before = new Set(ledger.skipped);
-  const updated = recordSkipped(ledger, inputs);
-  await save(updated);
+  const batches = await loadLedgerBatches(domains);
+  for (const { key, domains: batchDomains, handle } of batches) {
+    const before = new Set(handle.ledger.skipped);
+    const updated = recordSkipped(handle.ledger, batchDomains);
+    await handle.save(updated);
 
-  console.log(`Ledger: ${key}`);
-  for (const domain of domains) {
-    console.log(
-      before.has(domain)
-        ? `  ${domain} was already skipped`
-        : `  ${domain} skipped, no email will be sent`,
-    );
+    console.log(`Ledger: ${key}`);
+    for (const domain of batchDomains) {
+      console.log(
+        before.has(domain)
+          ? `  ${domain} was already skipped`
+          : `  ${domain} skipped, no email will be sent`,
+      );
+    }
+    console.log(`  ${updated.skipped.length} skipped draft(s) on this ledger.`);
   }
-  console.log(`\nLedger now records ${updated.skipped.length} skipped draft(s).`);
 }
 
 main().catch((err) => {
