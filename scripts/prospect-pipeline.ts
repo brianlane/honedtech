@@ -129,8 +129,8 @@ async function main() {
   }
 
   if (drafts.length > 0 || followUps.length > 0) {
-    const digestUrl = required('DIGEST_URL');
-    const digestSecret = required('DIGEST_SECRET');
+    const digestUrl = requiredEnv('DIGEST_URL');
+    const digestSecret = requiredEnv('DIGEST_SECRET');
 
     // Recorded as DRAFTED, not as sent: these are about to land in our own
     // review inbox, and only a human sending one from Gmail (logged with

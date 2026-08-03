@@ -189,8 +189,8 @@ async function main() {
     return;
   }
 
-  const digestUrl = required('DIGEST_URL');
-  const digestSecret = required('DIGEST_SECRET');
+  const digestUrl = requiredEnv('DIGEST_URL');
+  const digestSecret = requiredEnv('DIGEST_SECRET');
 
   // Recorded as DRAFTED before the digest goes out, same reasoning as the SMB
   // pipeline: sending first leaves a window where the digest exists but KV
