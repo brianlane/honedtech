@@ -1,5 +1,14 @@
 {
   "extends": "astro/tsconfigs/strict",
-  "include": [".astro/types.d.ts", "worker-configuration.d.ts", "src/**/*"],
+  // scripts/ is in scope on purpose. It was left out until a rename shipped a
+  // call to a deleted function (#45), which no check caught because the
+  // typechecker was never pointed at these files. The scheduled pipelines run
+  // from scripts/ and are the least watched code we have, so they need it most.
+  "include": [
+    ".astro/types.d.ts",
+    "worker-configuration.d.ts",
+    "src/**/*",
+    "scripts/**/*"
+  ],
   "exclude": ["dist"]
 }

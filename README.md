@@ -140,7 +140,8 @@ After returning to main:
 
 ## CI/CD ([.github/workflows/ci.yml](.github/workflows/ci.yml))
 
-- **quality**: em dash guard, `astro check` typecheck, build
+- **quality**: em dash guard, `astro check` typecheck (covers `src/` and
+  `scripts/`, so the scheduled pipelines are typechecked too), build
 - **test**: vitest with the 100% coverage gate (coverage report uploaded as
   an artifact)
 - **security**: `npm audit --omit=dev --audit-level=high` (non-blocking)
