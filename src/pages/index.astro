@@ -110,17 +110,20 @@ const problems = [
 
 const steps = [
   {
-    num: '01 / Audit',
+    num: '01',
+    meta: 'Audit',
     title: 'We find the waste',
     body: 'A full review of subscriptions, hosting, licenses, tools, and workflow friction, with a written report and prioritized next steps.',
   },
   {
-    num: '02 / Fix',
+    num: '02',
+    meta: 'Fix',
     title: 'We eliminate it',
     body: 'Cancel what is unnecessary, migrate what is overpriced, rebuild what is broken, and implement the workflows your business actually needs.',
   },
   {
-    num: '03 / Keep it sharp',
+    num: '03',
+    meta: 'Keep it sharp',
     title: 'We manage it going forward',
     body: 'Hosting, security, updates, optimization, vendor oversight, and AI operations stay accountable on a clear monthly retainer.',
   },
@@ -357,7 +360,7 @@ const faqSchema = {
     set:html={JSON.stringify(faqSchema)}
   />
 
-  <section class="hero">
+  <section class="hero home-hero">
     <div class="container hero-layout">
       <div>
         <span class="eyebrow">Tech audits · AI systems · Ongoing operations</span>
@@ -378,17 +381,22 @@ const faqSchema = {
         </p>
       </div>
       <aside class="brief-panel" aria-label="Efficiency brief">
-        <p class="kicker">Efficiency brief</p>
-        <p class="brief-title">Ready to map</p>
+        <div class="brief-top">
+          <p class="brief-label">Efficiency brief</p>
+          <p class="brief-live"><span class="live-dot" aria-hidden="true"></span> Ready to map</p>
+        </div>
+        <p class="brief-figure">$200-$500</p>
         <p class="brief-stat">
-          Typical recoverable spend <strong>$200-$500</strong> per month, before
-          workflow gains.
+          Typical recoverable spend per month, before workflow gains.
         </p>
         <ol class="brief-steps">
           {briefSteps.map((step) => (
             <li>
               <span class="num">{step.num}</span>
-              <span>{step.title} ({step.tag})</span>
+              <span class="brief-step">
+                <span class="brief-step-name">{step.title}</span>
+                <span class="brief-step-tag">{step.tag}</span>
+              </span>
             </li>
           ))}
         </ol>
@@ -407,19 +415,22 @@ const faqSchema = {
     </div>
   </section>
 
-  <section id="consulting">
+  <section id="consulting" class="flagship">
+    <div class="flagship-ring" aria-hidden="true"></div>
     <div class="container">
       <p class="kicker">Flagship service</p>
-      <h2>AI efficiency consulting that ends in a working system.</h2>
-      <p class="section-lead">
-        We help small operators stop drowning in intake and follow-up by
-        shipping a working AI coworker and the routines around it, with
-        optional ongoing operations.
-      </p>
-      <div class="grid grid-3 steps">
+      <div class="split-head">
+        <h2>AI efficiency consulting that ends in a working system.</h2>
+        <p class="section-lead">
+          We help small operators stop drowning in intake and follow-up by
+          shipping a working AI coworker and the routines around it, with
+          optional ongoing operations.
+        </p>
+      </div>
+      <div class="stages">
         {flagship.map((phase) => (
-          <div class="card step">
-            <p class="num">{phase.num}</p>
+          <article class="stage">
+            <p class="stage-num">{phase.num}</p>
             <h3>{phase.title}</h3>
             <p>{phase.body}</p>
             <ul>
@@ -428,14 +439,14 @@ const faqSchema = {
               ))}
             </ul>
             {phase.note && <p class="note">{phase.note}</p>}
-          </div>
+          </article>
         ))}
       </div>
-      <p class="flagship-close">
-        The goal is not more software. It is less administrative drag, faster
-        follow-through, and a stack your team understands.
-      </p>
-      <div class="cta-row" style="margin-top: 28px;">
+      <div class="flagship-foot">
+        <p class="flagship-close">
+          The goal is not more software. It is less administrative drag, faster
+          follow-through, and a stack your team understands.
+        </p>
         <a href="#contact" class="btn btn-primary" data-audit="consulting">
           Discuss an AI Efficiency Audit
         </a>
@@ -444,49 +455,60 @@ const faqSchema = {
   </section>
 
   <div id="problem" class="alias-anchor"></div>
-  <section id="services" class="section-alt">
+  <section id="services">
     <div class="container">
-      <p class="kicker">The problem</p>
-      <h2>Nobody is watching your tech spend. Vendors know it.</h2>
-      <p class="section-lead">
-        Tools get sold, configured once, and forgotten. Meanwhile, costs
-        compound and staff quietly work around systems that never earned
-        adoption.
-      </p>
-      <div class="grid problem-grid">
-        {problems.map((item) => (
-          <div class="card">
-            <p class="num">{item.num}</p>
-            <h3>{item.title}</h3>
-            <p>{item.body}</p>
-          </div>
-        ))}
+      <div class="split-head">
+        <div>
+          <p class="kicker">The problem</p>
+          <h2>Nobody is watching your tech spend. Vendors know it.</h2>
+        </div>
+        <p class="section-lead">
+          Tools get sold, configured once, and forgotten. Meanwhile, costs
+          compound and staff quietly work around systems that never earned
+          adoption.
+        </p>
       </div>
+      <ol class="indexed-list">
+        {problems.map((item) => (
+          <li>
+            <span class="indexed-num">{item.num}</span>
+            <div>
+              <h3>{item.title}</h3>
+              <p>{item.body}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
     </div>
   </section>
 
   <div id="how-it-works" class="alias-anchor"></div>
   <section id="audits">
-    <div class="container">
-      <p class="kicker">How it works</p>
-      <h2>Audit. Fix. Keep it sharp.</h2>
-      <p class="section-lead">
-        Start small and low-risk. See the savings and the operating case before
-        committing to a build or ongoing support.
-      </p>
-      <div class="grid grid-3 steps">
-        {steps.map((step) => (
-          <div class="card step">
-            <p class="num">{step.num}</p>
-            <h3>{step.title}</h3>
-            <p>{step.body}</p>
-          </div>
-        ))}
+    <div class="container how-grid">
+      <div>
+        <p class="kicker">How it works</p>
+        <h2>Audit. Fix. Keep it sharp.</h2>
+        <p class="section-lead">
+          Start small and low-risk. See the savings and the operating case before
+          committing to a build or ongoing support.
+        </p>
       </div>
+      <ol class="indexed-list how-steps">
+        {steps.map((step) => (
+          <li>
+            <span class="indexed-num">{step.num}</span>
+            <div>
+              <p class="indexed-meta">{step.meta}</p>
+              <h3>{step.title}</h3>
+              <p>{step.body}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
     </div>
   </section>
 
-  <section id="pricing" class="section-alt">
+  <section id="pricing">
     <div class="container">
       <p class="kicker">Services and pricing</p>
       <h2>Simple pricing. No surprises.</h2>
@@ -508,16 +530,17 @@ const faqSchema = {
         </div>
         {pricingTabs.map((tab) => (
           <div class="pricing-panel" id={`panel-${tab.id}`}>
-            <div class:list={['grid', tab.cols]}>
+            <div class:list={['price-board', tab.cols]}>
               {tab.items.map((item) => (
-                <div class:list={['card', 'price-card', { featured: item.featured }]}>
-                  <span class="tier">{item.tier}</span>
-                  <span class="price">
+                <article class:list={['price-card', { featured: item.featured }]}>
+                  <p class="price-kicker">{item.unit}</p>
+                  <h3 class="price-name">{item.tier}</h3>
+                  <p class="price">
                     {item.prefix && <span class="price-prefix">{item.prefix}</span>}
                     {item.price} <small>{item.unit}</small>
-                  </span>
+                  </p>
                   <p>{item.desc}</p>
-                </div>
+                </article>
               ))}
             </div>
             {tab.note && <p class="pricing-note">{tab.note}</p>}
@@ -528,51 +551,59 @@ const faqSchema = {
   </section>
 
   <section id="enterprise">
-    <div class="container">
-      <p class="kicker">Enterprise AI adoption</p>
-      <h2>Rolled out new software nobody uses? That is waste too.</h2>
-      <p class="section-lead">
-        Measure adoption, improve the operating model, or build the evidence to
-        simplify. Either way, leadership gets a decision grounded in usage
-        rather than rollout hype.
-      </p>
-      <div class="stat-callout partner-lane">
-        AI policy, governance, and identity and access management safeguards
-        can be delivered through trusted partners when the engagement requires
-        them. Honed Tech coordinates the operating fit without presenting those
-        controls as a direct product.
+    <div class="container enterprise-grid">
+      <div>
+        <p class="kicker">Enterprise AI adoption</p>
+        <h2>Rolled out new software nobody uses? That is waste too.</h2>
+        <p class="section-lead">
+          Measure adoption, improve the operating model, or build the evidence to
+          simplify. Either way, leadership gets a decision grounded in usage
+          rather than rollout hype.
+        </p>
+        <div class="partner-lane">
+          AI policy, governance, and identity and access management safeguards
+          can be delivered through trusted partners when the engagement requires
+          them. Honed Tech coordinates the operating fit without presenting those
+          controls as a direct product.
+        </div>
+        <div class="cta-row enterprise-actions">
+          <a href="#contact" class="btn btn-primary" data-audit="enterprise">
+            Discuss an enterprise engagement
+          </a>
+          <a href="/enterprise" class="btn btn-ghost">Estimate your seat waste</a>
+        </div>
       </div>
-      <div class="grid grid-3 steps">
+      <ol class="indexed-list how-steps">
         {enterpriseSteps.map((step) => (
-          <div class="card step">
-            <p class="num">{step.num}</p>
-            <h3>{step.title}</h3>
-            <p>{step.body}</p>
-          </div>
+          <li>
+            <span class="indexed-num">{step.num}</span>
+            <div>
+              <h3>{step.title}</h3>
+              <p>{step.body}</p>
+            </div>
+          </li>
         ))}
-      </div>
-      <div class="cta-row" style="margin-top: 36px;">
-        <a href="#contact" class="btn btn-primary" data-audit="enterprise">
-          Discuss an enterprise engagement
-        </a>
-        <a href="/enterprise" class="btn btn-ghost">Estimate your seat waste</a>
-      </div>
+      </ol>
     </div>
   </section>
 
-  <section id="who" class="section-alt">
+  <section id="who">
     <div class="container">
-      <p class="kicker">Who it is for</p>
-      <h2>Owner-operated businesses with real tech spend.</h2>
-      <p class="section-lead">
-        If you have a digital presence and nobody on staff whose job is watching
-        subscriptions, workflows, and tool adoption, Honed Tech fills the gap.
-      </p>
-      <ul class="cred-list fit-list">
-        {fit.map((item) => (
-          <li><span class="check">✓</span> {item}</li>
-        ))}
-      </ul>
+      <div class="fit-band">
+        <div>
+          <p class="kicker">Who it is for</p>
+          <h2>Owner-operated businesses with real tech spend.</h2>
+          <p class="section-lead">
+            If you have a digital presence and nobody on staff whose job is watching
+            subscriptions, workflows, and tool adoption, Honed Tech fills the gap.
+          </p>
+        </div>
+        <div class="fit-stats">
+          {fit.map((item) => (
+            <p>{item}</p>
+          ))}
+        </div>
+      </div>
       <p class="industry-label">Industry audits</p>
       <div class="vertical-row">
         {verticals.map((v) => (
@@ -584,10 +615,10 @@ const faqSchema = {
 
   <section id="about">
     <div class="container">
-      <p class="kicker">About</p>
-      <h2>Developer-level depth. Business-owner judgment.</h2>
       <div class="about-grid">
         <div>
+          <p class="kicker">About</p>
+          <h2>Developer-level depth. Business-owner judgment.</h2>
           <p>
             Honed Tech sits in the gap most vendors cannot fill. Web agencies
             design but rarely audit the full stack. IT firms manage
@@ -615,9 +646,11 @@ const faqSchema = {
   </section>
 
   <section id="faq">
-    <div class="container">
-      <p class="kicker">FAQ</p>
-      <h2>Straight answers before you book.</h2>
+    <div class="container faq-layout">
+      <div>
+        <p class="kicker">FAQ</p>
+        <h2>Straight answers before you book.</h2>
+      </div>
       <div class="faq-list">
         {faqs.map((item) => (
           <details class="faq-item">
@@ -629,7 +662,7 @@ const faqSchema = {
     </div>
   </section>
 
-  <section id="contact" class="section-alt">
+  <section id="contact" class="footer-band">
     <div class="container">
       <div class="footer-cta-grid">
         <div>

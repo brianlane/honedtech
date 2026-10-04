@@ -83,4 +83,24 @@ describe('homepage rebuild', () => {
     expect(page).toContain('honed_enterprise_msg');
     expect(layout).not.toContain('\u2014');
   });
+
+  it('applies the preview design system without an em dash', () => {
+    const css = readFileSync(resolve(root, 'src/styles/global.css'), 'utf8');
+    expect(css).toContain('Newsreader');
+    expect(css).toContain('Public Sans');
+    expect(css).toContain('#f7f9fb');
+    expect(css).toContain('#08121b');
+    expect(css).toContain('#12a681');
+    expect(css).toContain('#41d6ad');
+    expect(css).toContain('prefers-color-scheme: dark');
+    expect(css).toContain('prefers-reduced-motion: reduce');
+    expect(layout).toContain('family=Newsreader');
+    expect(layout).toContain('Public+Sans');
+    expect(page).toContain('class="hero home-hero"');
+    expect(page).toContain('class="flagship"');
+    expect(page).toContain('class="fit-band"');
+    expect(page).toContain('brief-figure');
+    expect(page).toContain('price-kicker');
+    expect(css).not.toContain('\u2014');
+  });
 });
