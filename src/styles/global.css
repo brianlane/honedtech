@@ -55,7 +55,11 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 64px;
+  gap: 16px;
+  min-height: 64px;
+  height: auto;
+  padding-top: 10px;
+  padding-bottom: 10px;
 }
 
 .logo {
@@ -75,6 +79,21 @@ body {
 
 .logo .accent {
   color: var(--teal-400);
+}
+
+.logo-lockup {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  line-height: 1.15;
+}
+
+.logo-tagline {
+  font-weight: 500;
+  font-size: 0.68rem;
+  letter-spacing: 0.01em;
+  color: var(--ink-faint);
+  line-height: 1.2;
 }
 
 .site-nav {
@@ -107,7 +126,7 @@ body {
   color: var(--navy-950);
 }
 
-@media (max-width: 720px) {
+@media (max-width: 900px) {
   .site-nav a:not(.nav-cta) {
     display: none;
   }
@@ -207,11 +226,130 @@ body {
   color: var(--ink-faint);
 }
 
+.hero .proof a {
+  color: var(--teal-400);
+  text-decoration: none;
+}
+
+.hero .proof a:hover {
+  text-decoration: underline;
+}
+
+.hero-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.85fr);
+  gap: 40px;
+  align-items: center;
+}
+
+.hero-layout h1,
+.hero-layout .sub {
+  max-width: none;
+}
+
+@media (max-width: 860px) {
+  .hero-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.brief-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px;
+}
+
+.brief-title {
+  font-size: 1.35rem;
+  font-weight: 750;
+  letter-spacing: -0.015em;
+  margin: 4px 0 12px;
+}
+
+.brief-stat {
+  color: var(--ink-muted);
+  font-size: 0.98rem;
+}
+
+.brief-stat strong {
+  color: var(--teal-400);
+  font-size: 1.2rem;
+}
+
+.brief-steps {
+  list-style: none;
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.brief-steps li {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  color: var(--ink-muted);
+  font-size: 0.95rem;
+}
+
+.brief-steps .num {
+  font-family: var(--mono);
+  color: var(--teal-400);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  flex-shrink: 0;
+}
+
 /* ---------- Sections ---------- */
 section {
   padding: 64px 0;
   /* Keep anchor targets clear of the sticky header */
-  scroll-margin-top: 72px;
+  scroll-margin-top: 84px;
+}
+
+.alias-anchor {
+  height: 0;
+  scroll-margin-top: 84px;
+}
+
+.proof-strip {
+  padding: 28px 0;
+  background: var(--navy-900);
+  border-bottom: 1px solid var(--border);
+}
+
+.proof-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px 28px;
+}
+
+.proof-title {
+  font-size: 0.98rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.fit-list {
+  margin-top: 28px;
+}
+
+.proof-grid p {
+  color: var(--ink-muted);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 800px) {
+  .proof-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .proof-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .section-alt {
@@ -269,6 +407,10 @@ h2 {
   }
 }
 
+.problem-grid {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
 @media (max-width: 860px) {
   .grid-3 {
     grid-template-columns: 1fr;
@@ -297,6 +439,30 @@ h2 {
 .card p {
   color: var(--ink-muted);
   font-size: 0.95rem;
+}
+
+.card ul {
+  margin: 14px 0 0;
+  padding-left: 1.1rem;
+  color: var(--ink-muted);
+  font-size: 0.95rem;
+}
+
+.card li + li {
+  margin-top: 6px;
+}
+
+.card .note {
+  margin-top: 14px;
+  font-size: 0.88rem;
+  color: var(--ink-faint);
+}
+
+.flagship-close {
+  margin-top: 28px;
+  max-width: 720px;
+  color: var(--ink);
+  font-size: 1.05rem;
 }
 
 .card .icon {
@@ -376,7 +542,7 @@ h2 {
   position: relative;
 }
 
-.step .num {
+.card .num {
   font-family: var(--mono);
   font-size: 0.8rem;
   color: var(--teal-400);
@@ -445,6 +611,157 @@ h2 {
     rgba(20, 184, 166, 0.08),
     var(--surface)
   );
+}
+
+.price-prefix {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ink-faint);
+}
+
+.pricing-tabs {
+  border: 0;
+  padding: 0;
+  margin: 28px 0 0;
+  min-inline-size: 0;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.pricing-tabbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pricing-tabbar label {
+  cursor: pointer;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 8px 16px;
+  color: var(--ink-muted);
+  font-size: 0.92rem;
+}
+
+.pricing-tabbar label:hover {
+  border-color: rgba(45, 212, 191, 0.45);
+  color: var(--ink);
+}
+
+#tab-consulting:checked ~ .pricing-tabbar label[for="tab-consulting"],
+#tab-audits:checked ~ .pricing-tabbar label[for="tab-audits"],
+#tab-builds:checked ~ .pricing-tabbar label[for="tab-builds"],
+#tab-retainers:checked ~ .pricing-tabbar label[for="tab-retainers"] {
+  background: var(--teal-400);
+  color: var(--navy-950);
+  border-color: transparent;
+  font-weight: 600;
+}
+
+#tab-consulting:focus-visible ~ .pricing-tabbar label[for="tab-consulting"],
+#tab-audits:focus-visible ~ .pricing-tabbar label[for="tab-audits"],
+#tab-builds:focus-visible ~ .pricing-tabbar label[for="tab-builds"],
+#tab-retainers:focus-visible ~ .pricing-tabbar label[for="tab-retainers"] {
+  outline: 2px solid var(--teal-400);
+  outline-offset: 2px;
+}
+
+.pricing-panel {
+  display: none;
+}
+
+#tab-consulting:checked ~ #panel-consulting,
+#tab-audits:checked ~ #panel-audits,
+#tab-builds:checked ~ #panel-builds,
+#tab-retainers:checked ~ #panel-retainers {
+  display: block;
+}
+
+.pricing-note {
+  margin-top: 16px;
+  color: var(--ink-faint);
+  font-size: 0.92rem;
+}
+
+.partner-lane {
+  font-size: 1rem;
+  color: var(--ink-muted);
+}
+
+.industry-label {
+  margin-top: 36px;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--teal-400);
+}
+
+.footer-cta-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.2fr);
+  gap: 56px;
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .footer-cta-grid {
+    grid-template-columns: 1fr;
+    gap: 36px;
+  }
+}
+
+.email-line {
+  margin-top: 18px;
+}
+
+.email-line a {
+  color: var(--teal-400);
+  font-size: 1.35rem;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.email-line a:hover {
+  text-decoration: underline;
+}
+
+.sharp-note {
+  flex-basis: auto;
+  border: 0;
+  margin: 32px 0 0;
+  padding: 0;
+}
+
+.sharp-note .newsletter-title {
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+
+.form-intro {
+  grid-column: 1 / -1;
+}
+
+.form-intro h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.form-intro p {
+  color: var(--ink-muted);
+  margin-top: 8px;
 }
 
 /* ---------- Verticals ---------- */

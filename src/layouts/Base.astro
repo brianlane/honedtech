@@ -9,8 +9,12 @@ interface Props {
 const {
   title = 'Honed Tech · Sharp tech. Clean stack. No waste.',
   description =
-    'Honed Tech finds what your business is overpaying for in its tech stack, fixes it, and keeps it sharp. Tech stack audits, lean web builds, and managed retainers.',
+    'Honed Tech finds what your business is overpaying for, fixes it, and makes AI actually stick. AI efficiency consulting, tech stack audits, and ongoing operations.',
 } = Astro.props;
+
+// The homepage renders its own newsletter inside the footer CTA. Other pages
+// keep the compact signup in the site footer.
+const showFooterNewsletter = Astro.url.pathname !== '/';
 
 const logoSvg = `<svg width="26" height="26" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M4 21 L13 3 L17 11" stroke="#2dd4bf" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.5 14.5 L22 21 L4 21" stroke="#e8eef4" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
@@ -64,16 +68,18 @@ const beaconToken = import.meta.env.PUBLIC_CF_BEACON_TOKEN as
       <div class="container">
         <a href="/" class="logo">
           <Fragment set:html={logoSvg} />
-          <span>Honed<span class="accent">Tech</span></span>
+          <span class="logo-lockup">
+            <span class="logo-word">Honed<span class="accent">Tech</span></span>
+            <span class="logo-tagline">Sharp tech. Clean stack. No waste.</span>
+          </span>
         </a>
         <nav class="site-nav">
-          <a href="/#problem">The Problem</a>
-          <a href="/#how-it-works">How It Works</a>
-          <a href="/calculator">Calculator</a>
+          <a href="/#services">Services</a>
           <a href="/#pricing">Pricing</a>
-          <a href="/enterprise">Enterprise</a>
-          <a href="/#about">About</a>
-          <a href="/#contact" class="nav-cta">Book an Audit</a>
+          <a href="/#enterprise">Enterprise</a>
+          <a href="/#audits">Audits</a>
+          <a href="/#faq">FAQ</a>
+          <a href="/#contact" class="nav-cta">Book an audit</a>
         </nav>
       </div>
     </header>
@@ -84,40 +90,39 @@ const beaconToken = import.meta.env.PUBLIC_CF_BEACON_TOKEN as
 
     <footer class="site-footer">
       <div class="container">
-        <form class="newsletter" method="POST" action="/api/subscribe">
-          <label for="newsletter-email">
-            Occasional notes on cutting tech waste. No spam.
-          </label>
-          <div class="newsletter-row">
-            <input
-              id="newsletter-email"
-              name="email"
-              type="email"
-              required
-              autocomplete="email"
-              placeholder="you@business.com"
-            />
-            <button type="submit" class="btn btn-primary">Subscribe</button>
-          </div>
-          <div class="hp" aria-hidden="true">
-            <label for="newsletter-hp">Leave this field empty</label>
-            <input id="newsletter-hp" name="website" type="text" tabindex="-1" autocomplete="off" />
-          </div>
-        </form>
+        {showFooterNewsletter && (
+          <form class="newsletter" method="POST" action="/api/subscribe">
+            <label for="newsletter-email">
+              Occasional notes on cutting tech waste. No spam.
+            </label>
+            <div class="newsletter-row">
+              <input
+                id="newsletter-email"
+                name="email"
+                type="email"
+                required
+                autocomplete="email"
+                placeholder="you@business.com"
+              />
+              <button type="submit" class="btn btn-primary">Subscribe</button>
+            </div>
+            <div class="hp" aria-hidden="true">
+              <label for="newsletter-hp">Leave this field empty</label>
+              <input id="newsletter-hp" name="website" type="text" tabindex="-1" autocomplete="off" />
+            </div>
+          </form>
+        )}
         <nav class="footer-nav" aria-label="Footer">
-          <a href="/#how-it-works">How It Works</a>
-          <a href="/calculator">Savings Calculator</a>
+          <a href="/#services">Services</a>
           <a href="/#pricing">Pricing</a>
-          <a href="/enterprise">Enterprise</a>
+          <a href="/#audits">Audits</a>
+          <a href="/#enterprise">Enterprise</a>
+          <a href="/enterprise">Seat estimator</a>
+          <a href="/calculator">Calculator</a>
           <a href="/#faq">FAQ</a>
-          <a href="/#contact">Book an Audit</a>
+          <a href="/#contact">Book an audit</a>
         </nav>
-        <p>
-          &copy; {new Date().getFullYear()} Honed Tech · Phoenix, AZ · Serving clients nationwide
-          <br />
-          Marketing by <a href="https://knownapex.com" rel="noopener">Known Apex</a>
-        </p>
-        <p class="tagline">Sharp tech. Clean stack. No waste.</p>
+        <p>&copy; {new Date().getFullYear()} Honed Tech. Sharp tech. Clean stack. No waste.</p>
       </div>
     </footer>
   </body>
