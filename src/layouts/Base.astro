@@ -16,7 +16,8 @@ const {
 // keep the compact signup in the site footer.
 const showFooterNewsletter = Astro.url.pathname !== '/';
 
-const logoSvg = `<svg width="26" height="26" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M4 21 L13 3 L17 11" stroke="#2dd4bf" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.5 14.5 L22 21 L4 21" stroke="#e8eef4" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const faviconSvg = `<svg width="26" height="26" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 21 L13 3 L17 11" stroke="#12a681" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.5 14.5 L22 21 L4 21" stroke="#0d1b2a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const logoSvg = `<svg class="logo-mark" width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true"><path class="logo-mark-edge" d="M4 21 L13 3 L17 11" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path class="logo-mark-base" d="M9.5 14.5 L22 21 L4 21" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
 const ogImage = new URL('/og.png', Astro.site);
 
@@ -48,9 +49,15 @@ const beaconToken = import.meta.env.PUBLIC_CF_BEACON_TOKEN as
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />
     <link rel="sitemap" href="/sitemap-index.xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Public+Sans:wght@400;500;600;700;800&display=swap"
+    />
     <link
       rel="icon"
-      href={`data:image/svg+xml,${encodeURIComponent(logoSvg)}`}
+      href={`data:image/svg+xml,${encodeURIComponent(faviconSvg)}`}
       type="image/svg+xml"
     />
     <slot name="head" />
