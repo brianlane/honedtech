@@ -1874,6 +1874,10 @@ form.contact-form {
     padding: 72px 0 48px;
   }
 
+  .hero h1 {
+    line-height: 1.02;
+  }
+
   .flagship,
   #pricing,
   #services {
