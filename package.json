@@ -26,13 +26,13 @@
     "prospect:followup": "tsx scripts/prospect-followup.ts"
   },
   "dependencies": {
-    "@astrojs/cloudflare": "^14.4.1",
-    "astro": "^7.3.8"
+    "@astrojs/cloudflare": "^14.4.8",
+    "astro": "^7.4.12"
   },
   "devDependencies": {
-    "@astrojs/check": "^0.9.11",
-    "@astrojs/sitemap": "^3.7.4",
-    "@types/node": "^26.6.5",
+    "@astrojs/check": "^0.9.12",
+    "@astrojs/sitemap": "^3.7.5",
+    "@types/node": "^26.6.6",
     "@vitest/coverage-v8": "^4.1.10",
     "tsx": "^4.23.15",
     "typescript": "^6.0.3",
